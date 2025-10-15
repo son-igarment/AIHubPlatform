@@ -38,3 +38,13 @@ Notes
 - Accepted values:
   - Role: `Backend_Developer`, `Lead_Developer`, `Fullstack_Developer`, `Founder`
   - Position: `Backend_Developer`, `API_Integration_Engineer`, `Fullstack_Developer`, `Project_Manager`, `DevOps_Engineer`, `QA_Engineer`
+
+**Python 3 Environment**
+- Requirements listed in `requirements.txt`.
+- Bootstrap locally (no system Python needed):
+  `powershell -ExecutionPolicy Bypass -File scripts/setup_python.ps1`
+- Activate: `.venv\Scripts\Activate.ps1`
+- Verify: `python -V` and `python -m pip -V`
+- Manage deps:
+  - Install new: `tools\uv.exe pip install <pkg> -p .venv`
+  - Or with pip: `python -m pip install <pkg>`
