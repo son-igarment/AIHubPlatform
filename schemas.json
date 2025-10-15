@@ -1,0 +1,253 @@
+{
+    "Log":  {
+                "required":  [
+                                 "content",
+                                 "log_type",
+                                 "severity",
+                                 "user_id"
+                             ],
+                "type":  "object",
+                "properties":  {
+                                   "log_id":  {
+                                                  "type":  "integer",
+                                                  "format":  "int32"
+                                              },
+                                   "user_id":  {
+                                                   "type":  "integer",
+                                                   "format":  "int32"
+                                               },
+                                   "task_id":  {
+                                                   "type":  "integer",
+                                                   "format":  "int32",
+                                                   "nullable":  true
+                                               },
+                                   "log_type":  {
+                                                    "maxLength":  100,
+                                                    "minLength":  1,
+                                                    "type":  "string"
+                                                },
+                                   "content":  {
+                                                   "minLength":  1,
+                                                   "type":  "string"
+                                               },
+                                   "severity":  {
+                                                    "maxLength":  50,
+                                                    "minLength":  1,
+                                                    "type":  "string"
+                                                },
+                                   "created_at":  {
+                                                      "type":  "string",
+                                                      "format":  "date-time"
+                                                  }
+                               },
+                "additionalProperties":  false
+            },
+    "LoginDto":  {
+                     "type":  "object",
+                     "properties":  {
+                                        "email":  {
+                                                      "type":  "string",
+                                                      "nullable":  true
+                                                  },
+                                        "password":  {
+                                                         "type":  "string",
+                                                         "nullable":  true
+                                                     }
+                                    },
+                     "additionalProperties":  false
+                 },
+    "MemberCreateDto":  {
+                            "required":  [
+                                             "email",
+                                             "full_name",
+                                             "password",
+                                             "position",
+                                             "role"
+                                         ],
+                            "type":  "object",
+                            "properties":  {
+                                               "full_name":  {
+                                                                 "maxLength":  255,
+                                                                 "minLength":  1,
+                                                                 "type":  "string"
+                                                             },
+                                               "email":  {
+                                                             "maxLength":  255,
+                                                             "minLength":  1,
+                                                             "type":  "string",
+                                                             "format":  "email"
+                                                         },
+                                               "password":  {
+                                                                "minLength":  6,
+                                                                "type":  "string"
+                                                            },
+                                               "role":  {
+                                                            "$ref":  "#/components/schemas/RoleType"
+                                                        },
+                                               "position":  {
+                                                                "$ref":  "#/components/schemas/PositionType"
+                                                            }
+                                           },
+                            "additionalProperties":  false
+                        },
+    "MemberUpdateDto":  {
+                            "type":  "object",
+                            "properties":  {
+                                               "full_name":  {
+                                                                 "maxLength":  255,
+                                                                 "type":  "string",
+                                                                 "nullable":  true
+                                                             },
+                                               "email":  {
+                                                             "maxLength":  255,
+                                                             "type":  "string",
+                                                             "format":  "email",
+                                                             "nullable":  true
+                                                         },
+                                               "password":  {
+                                                                "minLength":  6,
+                                                                "type":  "string",
+                                                                "nullable":  true
+                                                            },
+                                               "role":  {
+                                                            "$ref":  "#/components/schemas/RoleType"
+                                                        },
+                                               "position":  {
+                                                                "$ref":  "#/components/schemas/PositionType"
+                                                            }
+                                           },
+                            "additionalProperties":  false
+                        },
+    "PositionType":  {
+                         "enum":  [
+                                      "Backend_Developer",
+                                      "API_Integration_Engineer",
+                                      "Fullstack_Developer",
+                                      "Project_Manager",
+                                      "DevOps_Engineer",
+                                      "QA_Engineer"
+                                  ],
+                         "type":  "string"
+                     },
+    "RoleType":  {
+                     "enum":  [
+                                  "Backend_Developer",
+                                  "Lead_Developer",
+                                  "Fullstack_Developer",
+                                  "Founder"
+                              ],
+                     "type":  "string"
+                 },
+    "TaskCreateDto":  {
+                          "required":  [
+                                           "assignee_id",
+                                           "assigner_id",
+                                           "title"
+                                       ],
+                          "type":  "object",
+                          "properties":  {
+                                             "title":  {
+                                                           "maxLength":  255,
+                                                           "minLength":  1,
+                                                           "type":  "string"
+                                                       },
+                                             "description":  {
+                                                                 "type":  "string",
+                                                                 "nullable":  true
+                                                             },
+                                             "assigner_id":  {
+                                                                 "type":  "integer",
+                                                                 "format":  "int32"
+                                                             },
+                                             "assignee_id":  {
+                                                                 "type":  "integer",
+                                                                 "format":  "int32"
+                                                             },
+                                             "collaborators":  {
+                                                                   "type":  "array",
+                                                                   "items":  {
+                                                                                 "type":  "integer",
+                                                                                 "format":  "int32"
+                                                                             },
+                                                                   "nullable":  true
+                                                               },
+                                             "expected_output":  {
+                                                                     "type":  "string",
+                                                                     "nullable":  true
+                                                                 },
+                                             "deadline":  {
+                                                              "type":  "string",
+                                                              "format":  "date-time",
+                                                              "nullable":  true
+                                                          },
+                                             "status":  {
+                                                            "type":  "string",
+                                                            "nullable":  true
+                                                        },
+                                             "progress_percentage":  {
+                                                                         "type":  "integer",
+                                                                         "format":  "int32"
+                                                                     },
+                                             "notion_link":  {
+                                                                 "type":  "string",
+                                                                 "nullable":  true
+                                                             }
+                                         },
+                          "additionalProperties":  false
+                      },
+    "TaskUpdateDto":  {
+                          "type":  "object",
+                          "properties":  {
+                                             "title":  {
+                                                           "maxLength":  255,
+                                                           "type":  "string",
+                                                           "nullable":  true
+                                                       },
+                                             "description":  {
+                                                                 "type":  "string",
+                                                                 "nullable":  true
+                                                             },
+                                             "assigner_id":  {
+                                                                 "type":  "integer",
+                                                                 "format":  "int32",
+                                                                 "nullable":  true
+                                                             },
+                                             "assignee_id":  {
+                                                                 "type":  "integer",
+                                                                 "format":  "int32",
+                                                                 "nullable":  true
+                                                             },
+                                             "collaborators":  {
+                                                                   "type":  "array",
+                                                                   "items":  {
+                                                                                 "type":  "integer",
+                                                                                 "format":  "int32"
+                                                                             },
+                                                                   "nullable":  true
+                                                               },
+                                             "expected_output":  {
+                                                                     "type":  "string",
+                                                                     "nullable":  true
+                                                                 },
+                                             "deadline":  {
+                                                              "type":  "string",
+                                                              "format":  "date-time",
+                                                              "nullable":  true
+                                                          },
+                                             "status":  {
+                                                            "type":  "string",
+                                                            "nullable":  true
+                                                        },
+                                             "progress_percentage":  {
+                                                                         "type":  "integer",
+                                                                         "format":  "int32",
+                                                                         "nullable":  true
+                                                                     },
+                                             "notion_link":  {
+                                                                 "type":  "string",
+                                                                 "nullable":  true
+                                                             }
+                                         },
+                          "additionalProperties":  false
+                      }
+}
