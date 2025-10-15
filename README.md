@@ -1,4 +1,4 @@
-# AIHub-R-D-Platform
+# AIHubPlatform
 
 Auth/User Management CLI (PowerShell)
 
