@@ -1,0 +1,131 @@
+from logging.handlers import RotatingFileHandler
+import logging
+from pathlib import Path
+from typing import Dict
+
+from fastapi import FastAPI, Depends, HTTPException, Request, status
+from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+
+from .config import settings
+from .models import LoginRequest, TokenPair, RefreshRequest, UserPublic
+from .security import (
+    authenticate,
+    create_access_token,
+    create_refresh_token,
+    get_current_user,
+    get_user_public,
+    require_role,
+    rotate_refresh_token,
+    seed_demo_users,
+    validate_refresh_token,
+)
+
+
+def setup_logging(log_dir: Path, level: str = "INFO") -> None:
+    log_file = log_dir / "app.log"
+    logger = logging.getLogger()
+    logger.setLevel(getattr(logging, level.upper(), logging.INFO))
+
+    fmt = logging.Formatter(
+        "%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+        "%Y-%m-%d %H:%M:%S",
+    )
+
+    # Console
+    ch = logging.StreamHandler()
+    ch.setFormatter(fmt)
+    logger.addHandler(ch)
+
+    # Rotating file: 5MB x 5
+    fh = RotatingFileHandler(log_file, maxBytes=5 * 1024 * 1024, backupCount=5, encoding="utf-8")
+    fh.setFormatter(fmt)
+    logger.addHandler(fh)
+
+
+app = FastAPI(title=settings.APP_NAME, version="1.0.0")
+setup_logging(settings.LOG_DIR, settings.LOG_LEVEL)
+logger = logging.getLogger("auth")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.middleware("http")
+async def add_request_context(request: Request, call_next):
+    try:
+        response = await call_next(request)
+        return response
+    except HTTPException as he:
+        logger.warning(
+            "HTTPException: %s %s -> %s %s",
+            request.method,
+            request.url.path,
+            he.status_code,
+            he.detail,
+        )
+        return JSONResponse(status_code=he.status_code, content={"detail": he.detail})
+    except Exception as exc:
+        logger.exception("Unhandled error for %s %s", request.method, request.url.path)
+        return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
+
+
+@app.on_event("startup")
+async def startup_event():
+    seed_demo_users()
+    logger.info("Application started. Demo users seeded.")
+
+
+@app.get("/api/v1/health")
+async def health() -> Dict[str, str]:
+    return {"status": "ok"}
+
+
+@app.post("/api/v1/auth/login", response_model=TokenPair)
+async def login(payload: LoginRequest):
+    user = authenticate(payload.email, payload.password)
+    if not user:
+        # Do not leak whether email exists
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    access_token = create_access_token(user.id)
+    refresh_token = create_refresh_token(user.id)
+    logger.info("Login success for %s", user.email)
+    return TokenPair(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        expires_in=int(settings.access_expires.total_seconds()),
+    )
+
+
+@app.post("/api/v1/auth/refresh", response_model=TokenPair)
+async def refresh(payload: RefreshRequest):
+    subject = validate_refresh_token(payload.refresh_token)
+    access_token = create_access_token(subject)
+    new_refresh = rotate_refresh_token(payload.refresh_token, subject)
+    logger.info("Refresh token rotated for subject=%s", subject)
+    return TokenPair(
+        access_token=access_token,
+        refresh_token=new_refresh,
+        expires_in=int(settings.access_expires.total_seconds()),
+    )
+
+
+@app.get("/api/v1/me", response_model=UserPublic)
+async def me(user=Depends(get_current_user)):
+    return get_user_public(user)
+
+
+@app.get("/api/v1/protected/dev", response_model=UserPublic)
+async def dev_area(user=Depends(require_role("Dev"))):
+    return get_user_public(user)
+
+
+@app.get("/api/v1/protected/admin", response_model=UserPublic)
+async def admin_area(user=Depends(require_role("Admin"))):
+    return get_user_public(user)
+
