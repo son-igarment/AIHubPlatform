@@ -26,23 +26,34 @@ from .security import (
 
 def setup_logging(log_dir: Path, level: str = "INFO") -> None:
     log_file = log_dir / "app.log"
-    logger = logging.getLogger()
-    logger.setLevel(getattr(logging, level.upper(), logging.INFO))
+    auth_file = log_dir / "auth.log"
+    root_logger = logging.getLogger()
+    root_logger.setLevel(getattr(logging, level.upper(), logging.INFO))
 
     fmt = logging.Formatter(
         "%(asctime)s | %(levelname)s | %(name)s | %(message)s",
         "%Y-%m-%d %H:%M:%S",
     )
 
-    # Console
-    ch = logging.StreamHandler()
-    ch.setFormatter(fmt)
-    logger.addHandler(ch)
+    # Console handler (guard against duplicates on reload)
+    if not any(isinstance(h, logging.StreamHandler) for h in root_logger.handlers):
+        ch = logging.StreamHandler()
+        ch.setFormatter(fmt)
+        root_logger.addHandler(ch)
 
-    # Rotating file: 5MB x 5
-    fh = RotatingFileHandler(log_file, maxBytes=5 * 1024 * 1024, backupCount=5, encoding="utf-8")
-    fh.setFormatter(fmt)
-    logger.addHandler(fh)
+    # Root rotating file handler (5MB x 5) with duplicate guard
+    if not any(isinstance(h, RotatingFileHandler) and getattr(h, 'baseFilename', '') == str(log_file) for h in root_logger.handlers):
+        fh = RotatingFileHandler(log_file, maxBytes=5 * 1024 * 1024, backupCount=5, encoding="utf-8")
+        fh.setFormatter(fmt)
+        root_logger.addHandler(fh)
+
+    # Dedicated auth logger to logs/auth.log (duplicate guard)
+    auth_logger = logging.getLogger("auth")
+    if not any(isinstance(h, RotatingFileHandler) and getattr(h, 'baseFilename', '') == str(auth_file) for h in auth_logger.handlers):
+        ah = RotatingFileHandler(auth_file, maxBytes=5 * 1024 * 1024, backupCount=5, encoding="utf-8")
+        ah.setFormatter(fmt)
+        auth_logger.addHandler(ah)
+    # Keep propagate True so auth logs also go to app.log and console
 
 
 app = FastAPI(title=settings.APP_NAME, version="1.0.0")

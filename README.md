@@ -48,3 +48,13 @@ Notes
 - Manage deps:
   - Install new: `tools\uv.exe pip install <pkg> -p .venv`
   - Or with pip: `python -m pip install <pkg>`
+
+Auth API Test Cases
+- 1) Login hợp lệ: status 200, trả về JWT (access_token, refresh_token). Kiểm tra thêm response time và log có ghi vào `logs/auth.log`.
+- 2) Token hết hạn: status 401 khi gọi endpoint bảo vệ (ví dụ `/api/v1/me`). Có log cảnh báo tại `logs/auth.log` nêu rõ HTTPException 401.
+- 3) Refresh token: status 200, cấp token mới khi gọi `POST /api/v1/auth/refresh` với refresh_token hợp lệ. Sau khi refresh, gọi lại endpoint bảo vệ phải thành công.
+
+Ghi log KPI (auth.log)
+- File: `logs/auth.log` (xoay vòng 5MB x 5)
+- Nội dung: email (nếu có), ip, user-agent, request_id, dur_ms, status/detail cho lỗi.
+- Dùng để team backend tích hợp Dashboard KPI tuần sau.
