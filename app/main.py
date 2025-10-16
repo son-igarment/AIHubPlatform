@@ -1,10 +1,12 @@
 from logging.handlers import RotatingFileHandler
 import logging
 from pathlib import Path
+import time
+import uuid
 from typing import Dict
 
 from fastapi import FastAPI, Depends, HTTPException, Request, status
-from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
@@ -58,21 +60,53 @@ app.add_middleware(
 
 @app.middleware("http")
 async def add_request_context(request: Request, call_next):
+    request_id = str(uuid.uuid4())
+    request.state.request_id = request_id
+    start = time.perf_counter()
+    ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else "?")
+    ua = request.headers.get("user-agent", "?")
     try:
         response = await call_next(request)
         return response
     except HTTPException as he:
+        dur_ms = int((time.perf_counter() - start) * 1000)
         logger.warning(
-            "HTTPException: %s %s -> %s %s",
+            "HTTPException | id=%s | %s %s | status=%s | detail=%s | ip=%s | ua=%s | dur_ms=%s",
+            request_id,
             request.method,
             request.url.path,
             he.status_code,
             he.detail,
+            ip,
+            ua,
+            dur_ms,
         )
-        return JSONResponse(status_code=he.status_code, content={"detail": he.detail})
-    except Exception as exc:
-        logger.exception("Unhandled error for %s %s", request.method, request.url.path)
-        return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
+        raise
+    except RequestValidationError as ve:
+        dur_ms = int((time.perf_counter() - start) * 1000)
+        logger.warning(
+            "ValidationError | id=%s | %s %s | status=422 | errors=%s | ip=%s | ua=%s | dur_ms=%s",
+            request_id,
+            request.method,
+            request.url.path,
+            ve.errors(),
+            ip,
+            ua,
+            dur_ms,
+        )
+        raise
+    except Exception:
+        dur_ms = int((time.perf_counter() - start) * 1000)
+        logger.exception(
+            "Unhandled | id=%s | %s %s | ip=%s | ua=%s | dur_ms=%s",
+            request_id,
+            request.method,
+            request.url.path,
+            ip,
+            ua,
+            dur_ms,
+        )
+        raise
 
 
 @app.on_event("startup")
@@ -87,19 +121,52 @@ async def health() -> Dict[str, str]:
 
 
 @app.post("/api/v1/auth/login", response_model=TokenPair)
-async def login(payload: LoginRequest):
-    user = authenticate(payload.email, payload.password)
-    if not user:
-        # Do not leak whether email exists
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-    access_token = create_access_token(user.id)
-    refresh_token = create_refresh_token(user.id)
-    logger.info("Login success for %s", user.email)
-    return TokenPair(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        expires_in=int(settings.access_expires.total_seconds()),
-    )
+async def login(payload: LoginRequest, request: Request):
+    ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else "?")
+    ua = request.headers.get("user-agent", "?")
+    req_id = getattr(request.state, "request_id", "-")
+    start = time.perf_counter()
+    try:
+        user = authenticate(payload.email, payload.password)
+        if not user:
+            # Do not leak whether email exists
+            logger.warning(
+                "Login failed | id=%s | email=%s | ip=%s | ua=%s | reason=%s",
+                req_id,
+                payload.email,
+                ip,
+                ua,
+                "invalid_credentials",
+            )
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+        access_token = create_access_token(user.id)
+        refresh_token = create_refresh_token(user.id)
+        logger.info(
+            "Login success | id=%s | email=%s | ip=%s | ua=%s | dur_ms=%s",
+            req_id,
+            user.email,
+            ip,
+            ua,
+            int((time.perf_counter() - start) * 1000),
+        )
+        return TokenPair(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            expires_in=int(settings.access_expires.total_seconds()),
+        )
+    except HTTPException:
+        # Already logged above; let middleware preserve status
+        raise
+    except Exception:
+        # Add context for unexpected errors in login flow
+        logger.exception(
+            "Login error | id=%s | email=%s | ip=%s | ua=%s",
+            req_id,
+            payload.email,
+            ip,
+            ua,
+        )
+        raise
 
 
 @app.post("/api/v1/auth/refresh", response_model=TokenPair)
