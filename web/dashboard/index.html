@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AIHub Dashboard</title>
+    <meta name="color-scheme" content="light dark" />
+    <style>
+      :root { --bg:#0b1020; --card:#121831; --text:#e6ecff; --muted:#9bb0ff33; --accent:#6ea8fe; --ok:#4cc9f0; --warn:#ffd166; --err:#ff6b6b; }
+      @media (prefers-color-scheme: light) { :root { --bg:#f6f8ff; --card:#ffffff; --text:#0b1020; --muted:#0b102011; --accent:#2563eb; --ok:#10b981; --warn:#f59e0b; --err:#ef4444; } }
+      html,body { height:100%; }
+      body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif; background:linear-gradient(180deg, var(--bg), #0b1020) fixed; color:var(--text); }
+      .container { max-width:1100px; margin:0 auto; padding:16px; }
+      .header { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+      .brand { font-weight:700; letter-spacing:0.2px; }
+      .cards { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:16px 0; }
+      .card { background:linear-gradient(180deg, var(--card), #0b1020e6); border:1px solid var(--muted); border-radius:12px; padding:14px; box-shadow:0 8px 24px #00000022; }
+      .card small { opacity:.8; }
+      .card h2 { margin:.25rem 0 0; font-size:1.6rem; }
+      .badges { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+      .badge { padding:2px 8px; border-radius:999px; font-size:.78rem; border:1px solid var(--muted); background:#ffffff08; }
+      .chart-wrap { background:linear-gradient(180deg, var(--card), #0b1020e6); border:1px solid var(--muted); border-radius:12px; padding:12px; }
+      .row { display:grid; grid-template-columns:2fr; gap:12px; }
+      .footer { opacity:.7; font-size:.85rem; margin:16px 0; }
+      @media (max-width: 900px) { .cards { grid-template-columns:repeat(2,1fr);} }
+      @media (max-width: 560px) {
+        .header { flex-direction:column; align-items:flex-start; }
+        .cards { grid-template-columns:1fr; }
+        .brand { font-size:1.1rem; }
+      }
+    </style>
+    <!-- Libraries via CDN -->
+    <script defer src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script defer src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      // Ensure this runs after DOM parsed and deferred libs loaded
+      window.addEventListener('DOMContentLoaded', function(){
+        const e = React.createElement;
+
+        function fetchJSON(path) { return fetch(path, { cache:'no-store' }).then(r => r.json()); }
+
+        function KpiCard({ title, value, badges }) {
+          return e('div', { className:'card' },
+            e('small', null, title),
+            e('h2', null, String(value)),
+            e('div', { className:'badges' }, (badges||[]).map((b, i) =>
+              e('span', { key:i, className:'badge', style:{ borderColor:b.color, color:b.color } }, `${b.label}: ${b.value}`)
+            ))
+          );
+        }
+
+        function LineChart({ points }) {
+          const chartRef = React.useRef(null);
+          const canvasRef = React.useRef(null);
+          React.useEffect(() => {
+            if (!canvasRef.current) return;
+            const ctx = canvasRef.current.getContext('2d');
+            const c = new Chart(ctx, {
+              type: 'line',
+              data: {
+                labels: (points||[]).map(p => new Date(p.ts)),
+                datasets: [{
+                  label: 'Metric',
+                  data: (points||[]).map(p => p.value),
+                  borderColor: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#6ea8fe',
+                  backgroundColor: 'rgba(110,168,254,.15)',
+                  tension: .3,
+                  pointRadius: 0,
+                  borderWidth: 2,
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 180 },
+                scales: {
+                  x: { display: false },
+                  y: { display: true, grid: { color: 'rgba(150,160,200,.15)' } }
+                },
+                plugins: { legend: { display: false }, tooltip: { intersect:false, mode:'index' } }
+              }
+            });
+            chartRef.current = c;
+            return () => { try { c.destroy(); } catch{} };
+          }, []);
+
+          React.useEffect(() => {
+            const c = chartRef.current; if (!c) return;
+            const ds = c.data.datasets[0];
+            const lastLen = c.data.labels.length;
+            const newLen = (points||[]).length;
+            if (newLen >= lastLen) {
+              for (let i = lastLen; i < newLen; i++) {
+                ds.data.push(points[i].value);
+                c.data.labels.push(new Date(points[i].ts));
+              }
+              if (c.data.labels.length > 300) {
+                c.data.labels = c.data.labels.slice(-300);
+                ds.data = ds.data.slice(-300);
+              }
+            } else {
+              ds.data = (points||[]).map(p => p.value);
+              c.data.labels = (points||[]).map(p => new Date(p.ts));
+            }
+            c.update('none');
+          }, [points]);
+
+          return e('div', { className:'chart-wrap', style:{height:'280px'} }, e('canvas', { ref: canvasRef }));
+        }
+
+        function useDashboardData() {
+          const [tasks, setTasks] = React.useState({ total:0, completed:0, pending:0, failed:0, updated_at: '' });
+          const [reports, setReports] = React.useState({ total:0, delivered_today:0, pending_review:0, failed:0, updated_at: '' });
+          const [points, setPoints] = React.useState([]);
+          const [connected, setConnected] = React.useState(false);
+
+          React.useEffect(() => {
+            fetchJSON('/api/v1/tasks/summary').then(setTasks).catch(()=>{});
+            fetchJSON('/api/v1/reports/summary').then(setReports).catch(()=>{});
+            fetchJSON('/api/v1/metrics/history?limit=120').then(d => setPoints(d.points||[])).catch(()=>{});
+          }, []);
+
+          React.useEffect(() => {
+            const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+            const url = proto + '://' + location.host + '/ws/metrics';
+            let ws;
+            try {
+              ws = new WebSocket(url);
+              ws.onopen = () => setConnected(true);
+              ws.onclose = () => setConnected(false);
+              ws.onerror = () => setConnected(false);
+              ws.onmessage = (ev) => {
+                try {
+                  const msg = JSON.parse(ev.data);
+                  if (msg.type === 'snapshot') {
+                    if (Array.isArray(msg.points)) setPoints(msg.points);
+                    if (msg.tasks) setTasks(msg.tasks);
+                    if (msg.reports) setReports(msg.reports);
+                  } else if (msg.type === 'metric') {
+                    setPoints(prev => prev.concat([msg.point]).slice(-300));
+                    if (msg.tasks) setTasks(msg.tasks);
+                    if (msg.reports) setReports(msg.reports);
+                  }
+                  try { ws.send('ok'); } catch {}
+                } catch {}
+              };
+            } catch {}
+            return () => { try { ws && ws.close(); } catch{} };
+          }, []);
+
+          return { tasks, reports, points, connected };
+        }
+
+        function App() {
+          const { tasks, reports, points, connected } = useDashboardData();
+          return e('div', { className:'container' },
+            e('div', { className:'header' },
+              e('div', { className:'brand' }, 'AIHub Mini Dashboard'),
+              e('div', { className:'badge', title: connected ? 'WebSocket Connected' : 'Disconnected', style:{ borderColor: connected? 'var(--ok)': 'var(--warn)', color:connected? 'var(--ok)': 'var(--warn)'} }, connected ? 'Realtime: ON' : 'Realtime: OFF')
+            ),
+            e('div', { className:'cards' },
+              e(KpiCard, { title:'Tasks', value: tasks.total, badges:[{label:'Done', value:tasks.completed, color:'var(--ok)'},{label:'Pending', value:tasks.pending, color:'var(--warn)'},{label:'Failed', value:tasks.failed, color:'var(--err)'}] }),
+              e(KpiCard, { title:'Reports', value: reports.total, badges:[{label:'Today', value:reports.delivered_today, color:'var(--ok)'},{label:'Review', value:reports.pending_review, color:'var(--warn)'},{label:'Failed', value:reports.failed, color:'var(--err)'}] }),
+              e(KpiCard, { title:'Updated', value: (tasks.updated_at||'').replace('T',' ').slice(0,19) || '-', badges:[] }),
+              e(KpiCard, { title:'Users', value: 'Demo', badges:[{label:'Admin', value:'1', color:'var(--accent)'},{label:'Dev', value:'1', color:'var(--accent)'}] })
+            ),
+            e('div', { className:'row' },
+              e(LineChart, { points })
+            ),
+            e('div', { className:'footer' }, 'Tip: Mở trên mobile để kiểm tra responsive. Load tối ưu < 2.5s; chart realtime qua WebSocket (fallback polling).')
+          );
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+      });
+    </script>
+  </body>
+  </html>
+

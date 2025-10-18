@@ -8,6 +8,8 @@ from typing import Dict
 from fastapi import FastAPI, Depends, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import RedirectResponse
 
 from .config import settings
 from .models import LoginRequest, TokenPair, RefreshRequest, UserPublic
@@ -22,6 +24,7 @@ from .security import (
     seed_demo_users,
     validate_refresh_token,
 )
+from . import dashboard
 
 
 def setup_logging(log_dir: Path, level: str = "INFO") -> None:
@@ -124,6 +127,11 @@ async def add_request_context(request: Request, call_next):
 async def startup_event():
     seed_demo_users()
     logger.info("Application started. Demo users seeded.")
+    # kick off dashboard metrics loop
+    try:
+        await dashboard.ensure_loop_started()
+    except Exception:
+        logging.getLogger(__name__).exception("Failed to start dashboard metrics loop")
 
 
 @app.get("/api/v1/health")
@@ -207,3 +215,18 @@ async def dev_area(user=Depends(require_role("Dev"))):
 async def admin_area(user=Depends(require_role("Admin"))):
     return get_user_public(user)
 
+
+
+# Include dashboard API routes
+app.include_router(dashboard.router)
+
+# Serve static dashboard UI at /dashboard
+try:
+    app.mount("/dashboard", StaticFiles(directory="web/dashboard", html=True), name="dashboard")
+except Exception:
+    logging.getLogger(__name__).warning("Static dashboard directory not found; skipping mount")
+
+
+@app.get("/")
+async def root_redirect():
+    return RedirectResponse(url="/dashboard/")
