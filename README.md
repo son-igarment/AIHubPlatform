@@ -1,60 +1,68 @@
 # AIHubPlatform
 
-Auth/User Management CLI (PowerShell)
+AIHubPlatform là bộ khung demo phục vụ phát triển nhanh dịch vụ Auth/Role-based, dashboard realtime và các công cụ hỗ trợ QA. Repo bao gồm:
 
-This repo includes a simple PowerShell CLI to work with the Auth APIs from the AIHub Task Tracker backend:
+- **FastAPI backend**: cung cấp login, refresh token, tuyến bảo vệ theo role và WebSocket stream cho dashboard.
+- **Realtime dashboard**: trang React/Chart.js dựng sẵn, lấy số liệu tổng hợp qua REST/WebSocket.
+- **Công cụ CLI & Postman**: script PowerShell `scripts/auth.ps1` tương tác với hạ tầng Auth bên ngoài; Postman collection đi kèm để kiểm thử nhanh.
+- **Logging chuẩn hóa**: `logs/app.log` và `logs/auth.log` xoay vòng 5×5MB, bắt đủ request metadata phục vụ KPI.
 
-Base URL: `https://aihubtasktracker-bwbz.onrender.com`
+## Kiến trúc & Luồng chính
+- **Auth service**: FastAPI (`app/main.py`, `app/security.py`) dùng JWT (python-jose) + passlib[bcrypt]. Demo seed sẵn 2 user (Admin/Dev) khi khởi động.
+- **Dashboard metrics**: `app/dashboard.py` chạy background loop tạo dữ liệu tổng hợp (tasks/reports) và đẩy WebSocket `/ws/metrics`; REST hỗ trợ `/api/v1/tasks/summary`, `/api/v1/reports/summary`, `/api/v1/metrics/history`.
+- **Static UI**: `web/dashboard/index.html` mount tại `/dashboard`, kết nối tới API/WebSocket cùng origin nên không cần cấu hình CORS bổ sung.
+- **Script chạy server**: `scripts/run_server.ps1` kiểm tra/khởi tạo virtualenv, load `.env`, rồi start `uvicorn app.main:app --reload`.
 
-Endpoints wired:
-- `POST /api/v1/auth/register`
-- `POST /api/v1/auth/login`
-- `GET  /api/v1/users/profile`
-- `PUT  /api/v1/users/profile`
-- `POST /api/v1/auth/logout`
+```
+[Client] -> /api/v1/auth/login -> JWT access+refresh
+        -> /api/v1/auth/refresh -> refresh rotation (in-memory)
+        -> /api/v1/me, /api/v1/protected/* (Bearer access token)
+Dashboard UI ----REST----> /api/v1/*summary, /metrics/history
+                   └----WebSocket----> /ws/metrics (realtime stream)
+```
 
-Quick start
-- Open PowerShell in the project folder.
-- Use the commands below. A JWT is stored locally at `scripts/.token` after login.
+## Thiết lập nhanh
+1. Cài Python 3.11+ (khuyến nghị dùng script bootstrap kèm repo).
+2. Chạy `powershell -ExecutionPolicy Bypass -File scripts/setup_python.ps1` để tạo `.venv` và cài requirements.
+3. Khởi động backend: `powershell -ExecutionPolicy Bypass -File scripts/run_server.ps1`.
+   - Server mặc định: `http://127.0.0.1:8000`
+   - OpenAPI/Swagger: `http://127.0.0.1:8000/docs`
+   - Dashboard: `http://127.0.0.1:8000/dashboard/`
+4. (Tuỳ chọn) cấu hình `.env` tại project root:
+   ```
+   SECRET_KEY=change-this
+   ACCESS_TOKEN_EXPIRE_MINUTES=15
+   REFRESH_TOKEN_EXPIRE_DAYS=7
+   LOG_DIR=logs
+   LOG_LEVEL=INFO
+   ```
 
-Examples
-- Register:
-  `./scripts/auth.ps1 register -FullName "John Doe" -Email "john@example.com" -Password "Passw0rd!" -Role Founder -Position Fullstack_Developer`
+## Demo accounts & bảo mật
+- `admin@example.com / Admin@123` (role: `Admin`)
+- `dev@example.com / Dev@123` (role: `Dev`)
+- Access token mặc định hết hạn 15 phút; refresh token 7 ngày và được rotate mỗi lần sử dụng.
+- Token, user storage chỉ là in-memory phục vụ demo. Khi triển khai thật cần thay bằng database + cơ chế revoke bền vững.
 
-- Login:
-  `./scripts/auth.ps1 login -Email "john@example.com" -Password "Passw0rd!"`
+## Công cụ liên quan
+- **scripts/auth.ps1**: CLI gọn nhẹ để gọi Auth API từ backend AIHub Task Tracker (Render). Lưu JWT tại `scripts/.token`. Có thể override `AIHUB_API_BASE_URL`.
+- **scripts/setup_python.ps1**: cài đặt `uv` và tạo virtualenv tự động (không cần quyền admin).
+- **Postman collection**: `postman/AIHubPlatform_Auth.postman_collection.json` với flow đăng nhập, refresh, gọi endpoint bảo vệ.
 
-- Get profile:
-  `./scripts/auth.ps1 profile-get`
+## Logging & Giám sát
+- `logs/app.log`: mọi request + exception (console + file), xoay vòng 5MB × 5.
+- `logs/auth.log`: logger chuyên dụng ghi login, refresh, lỗi xác thực (thông tin gồm request_id, email, ip, user-agent, duration).
+- Dashboard realtime đọc dữ liệu synthetic, thuận tiện cho việc benchmark UI hoặc thay thế bằng dữ liệu thật từ backend.
 
-- Update profile (any field optional):
-  `./scripts/auth.ps1 profile-update -FullName "Johnny" -Position Backend_Developer`
+## Thư mục chính
+- `app/`: mã nguồn FastAPI (config, bảo mật, dashboard router).
+- `web/dashboard/`: static React + Chart.js bundle.
+- `scripts/`: PowerShell helper (setup, run server, auth CLI).
+- `postman/`: collection phục vụ QA.
+- `tools/`: nhị phân `uv.exe` và script cài đặt.
 
-- Logout:
-  `./scripts/auth.ps1 logout`
+## Tài liệu chi tiết
+- [API Docs](docs/api.md)
+- [Deployment Guide](docs/deployment.md)
+- Phụ lục Auth CLI (vẫn giữ tại `README_Auth.md`).
 
-Notes
-- You can override the base URL with env var `AIHUB_API_BASE_URL`.
-- Accepted values:
-  - Role: `Backend_Developer`, `Lead_Developer`, `Fullstack_Developer`, `Founder`
-  - Position: `Backend_Developer`, `API_Integration_Engineer`, `Fullstack_Developer`, `Project_Manager`, `DevOps_Engineer`, `QA_Engineer`
-
-**Python 3 Environment**
-- Requirements listed in `requirements.txt`.
-- Bootstrap locally (no system Python needed):
-  `powershell -ExecutionPolicy Bypass -File scripts/setup_python.ps1`
-- Activate: `.venv\Scripts\Activate.ps1`
-- Verify: `python -V` and `python -m pip -V`
-- Manage deps:
-  - Install new: `tools\uv.exe pip install <pkg> -p .venv`
-  - Or with pip: `python -m pip install <pkg>`
-
-Auth API Test Cases
-- 1) Login hợp lệ: status 200, trả về JWT (access_token, refresh_token). Kiểm tra thêm response time và log có ghi vào `logs/auth.log`.
-- 2) Token hết hạn: status 401 khi gọi endpoint bảo vệ (ví dụ `/api/v1/me`). Có log cảnh báo tại `logs/auth.log` nêu rõ HTTPException 401.
-- 3) Refresh token: status 200, cấp token mới khi gọi `POST /api/v1/auth/refresh` với refresh_token hợp lệ. Sau khi refresh, gọi lại endpoint bảo vệ phải thành công.
-
-Ghi log KPI (auth.log)
-- File: `logs/auth.log` (xoay vòng 5MB x 5)
-- Nội dung: email (nếu có), ip, user-agent, request_id, dur_ms, status/detail cho lỗi.
-- Dùng để team backend tích hợp Dashboard KPI tuần sau.
+> Gợi ý: tạo `python -m venv .venv` và thay đổi `SECRET_KEY` ngay khi đưa vào môi trường thực tế.
