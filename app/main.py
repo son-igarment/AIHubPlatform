@@ -30,6 +30,7 @@ from . import dashboard
 def setup_logging(log_dir: Path, level: str = "INFO") -> None:
     log_file = log_dir / "app.log"
     auth_file = log_dir / "auth.log"
+    ai_file = log_dir / "ai.log"
     root_logger = logging.getLogger()
     root_logger.setLevel(getattr(logging, level.upper(), logging.INFO))
 
@@ -57,6 +58,13 @@ def setup_logging(log_dir: Path, level: str = "INFO") -> None:
         ah.setFormatter(fmt)
         auth_logger.addHandler(ah)
     # Keep propagate True so auth logs also go to app.log and console
+
+    # Dedicated AI logger to logs/ai.log (duplicate guard)
+    ai_logger = logging.getLogger("ai")
+    if not any(isinstance(h, RotatingFileHandler) and getattr(h, 'baseFilename', '') == str(ai_file) for h in ai_logger.handlers):
+        aih = RotatingFileHandler(ai_file, maxBytes=5 * 1024 * 1024, backupCount=5, encoding="utf-8")
+        aih.setFormatter(fmt)
+        ai_logger.addHandler(aih)
 
 
 app = FastAPI(title=settings.APP_NAME, version="1.0.0")
@@ -219,6 +227,13 @@ async def admin_area(user=Depends(require_role("Admin"))):
 
 # Include dashboard API routes
 app.include_router(dashboard.router)
+
+# Include AI routes
+try:
+    from . import ai
+    app.include_router(ai.router, prefix="/api/v1")
+except Exception:
+    logging.getLogger(__name__).exception("Failed to include AI routes")
 
 # Serve static dashboard UI at /dashboard
 try:

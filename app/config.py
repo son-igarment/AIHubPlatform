@@ -24,6 +24,13 @@ class Settings:
     LOG_DIR: Path = Path(os.getenv("LOG_DIR", ROOT_DIR / "logs"))
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
 
+    # AI / OpenAI
+    OPENAI_API_KEY: str | None = os.getenv("OPENAI_API_KEY")
+    AI_MODEL: str = os.getenv("AI_MODEL", "gpt-4o-mini")
+    AI_TIMEOUT_MS: int = int(os.getenv("AI_TIMEOUT_MS", "1800"))  # hard cap to keep <2s total
+    AI_CACHE_TTL_SECONDS: int = int(os.getenv("AI_CACHE_TTL_SECONDS", "300"))
+    AI_CACHE_MAX: int = int(os.getenv("AI_CACHE_MAX", "256"))
+
     @property
     def access_expires(self) -> timedelta:
         return timedelta(minutes=self.ACCESS_TOKEN_EXPIRE_MINUTES)
