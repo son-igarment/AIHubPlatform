@@ -235,6 +235,13 @@ try:
 except Exception:
     logging.getLogger(__name__).exception("Failed to include AI routes")
 
+# Include Embedding routes
+try:
+    from . import embeddings
+    app.include_router(embeddings.router, prefix="/api/v1")
+except Exception:
+    logging.getLogger(__name__).exception("Failed to include Embedding routes")
+
 # Serve static dashboard UI at /dashboard
 try:
     app.mount("/dashboard", StaticFiles(directory="web/dashboard", html=True), name="dashboard")

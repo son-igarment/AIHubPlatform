@@ -64,6 +64,64 @@
           }
         }
       ]
+    },
+    {
+      "name": "Embeddings - Upsert",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"doc_id\": \"demo-1\",\n  \"content\": \"Apple releases the latest iPhone with advanced camera.\",\n  \"meta\": { \"source\": \"postman\" }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/embeddings/upsert",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","v1","embeddings","upsert"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+              "const json = pm.response.json();",
+              "pm.test('Returns doc_id and dim', function () { pm.expect(json.doc_id).to.be.a('string'); pm.expect(json.dim).to.be.a('number'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Embeddings - Search",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"smartphone by Apple\",\n  \"top_k\": 3\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/embeddings/search",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","v1","embeddings","search"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+              "const json = pm.response.json();",
+              "pm.test('Has results array', function () { pm.expect(json.results).to.be.an('array'); });"
+            ]
+          }
+        }
+      ]
     }
   ]
 }

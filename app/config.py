@@ -31,6 +31,11 @@ class Settings:
     AI_CACHE_TTL_SECONDS: int = int(os.getenv("AI_CACHE_TTL_SECONDS", "300"))
     AI_CACHE_MAX: int = int(os.getenv("AI_CACHE_MAX", "256"))
 
+    # Embeddings / Knowledge DB
+    EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+    KNOWLEDGE_DB_PATH: Path = Path(os.getenv("KNOWLEDGE_DB_PATH", ROOT_DIR / "aihub_knowledge.db"))
+    EMBEDDING_DIM: int = int(os.getenv("EMBEDDING_DIM", "1536"))  # default for text-embedding-3-small
+
     @property
     def access_expires(self) -> timedelta:
         return timedelta(minutes=self.ACCESS_TOKEN_EXPIRE_MINUTES)
