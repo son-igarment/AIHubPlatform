@@ -169,6 +169,23 @@ class SearchResponse(BaseModel):
     results: List[SearchHit]
 
 
+class SearchKnowledgeRequest(BaseModel):
+    query: str = Field(..., min_length=1)
+    top_k: int = 5
+    min_score: float = 0.0
+    # Hybrid scoring: alpha * cosine + (1-alpha) * keyword
+    alpha: float = Field(0.7, ge=0.0, le=1.0)
+    use_hybrid: bool = True
+
+
+class SearchKnowledgeResponse(BaseModel):
+    total: int
+    top_k: int
+    alpha: float
+    use_hybrid: bool
+    results: List[SearchHit]
+
+
 # -----------------------------
 # CRUD helpers
 # -----------------------------
@@ -219,6 +236,48 @@ def _all_documents() -> List[Tuple[str, str, List[float], Optional[Dict[str, Any
         con.close()
 
 
+def _bm25_keyword_scores(query: str, docs: List[Tuple[str, str]]) -> Dict[str, float]:
+    # docs: List[(doc_id, content)]
+    tokens_q = _simple_tokenize(query)
+    if not tokens_q or not docs:
+        return {}
+    # Build DF and per-doc TF
+    N = len(docs)
+    df: Dict[str, int] = {}
+    doc_tfs: Dict[str, Dict[str, int]] = {}
+    doc_lens: Dict[str, int] = {}
+    for doc_id, content in docs:
+        toks = _simple_tokenize(content)
+        doc_lens[doc_id] = len(toks) or 1
+        tf: Dict[str, int] = {}
+        seen: set[str] = set()
+        for t in toks:
+            tf[t] = tf.get(t, 0) + 1
+            if t not in seen:
+                df[t] = df.get(t, 0) + 1
+                seen.add(t)
+        doc_tfs[doc_id] = tf
+    avg_len = sum(doc_lens.values()) / max(N, 1)
+    # BM25 parameters
+    k = 1.2
+    b = 0.75
+    scores: Dict[str, float] = {doc_id: 0.0 for doc_id, _ in docs}
+    for q in tokens_q:
+        df_q = df.get(q, 0)
+        idf = math.log(1 + (N - df_q + 0.5) / (df_q + 0.5)) if N > 0 else 0.0
+        for doc_id, _ in docs:
+            tf = doc_tfs[doc_id].get(q, 0)
+            denom = tf + k * (1 - b + b * (doc_lens[doc_id] / (avg_len or 1)))
+            bm25 = idf * ((tf * (k + 1)) / denom) if denom > 0 else 0.0
+            scores[doc_id] += bm25
+    # Normalize to [0,1]
+    max_s = max(scores.values()) if scores else 0.0
+    if max_s > 0:
+        for d in scores:
+            scores[d] = scores[d] / max_s
+    return scores
+
+
 # -----------------------------
 # Routes
 # -----------------------------
@@ -251,4 +310,33 @@ def search_embeddings(payload: SearchRequest) -> SearchResponse:
         ],
     )
 
+
+@router.post("/search_knowledge", response_model=SearchKnowledgeResponse)
+def search_knowledge(payload: SearchKnowledgeRequest) -> SearchKnowledgeResponse:
+    query_emb = compute_embedding(payload.query)
+    all_docs = _all_documents()
+    # Prepare BM25 docs view
+    docs_for_kw = [(doc_id, content) for doc_id, content, _emb, _meta in all_docs]
+    kw_scores = _bm25_keyword_scores(payload.query, docs_for_kw) if payload.use_hybrid else {}
+    scored: List[Tuple[float, str, str, Optional[Dict[str, Any]]]] = []
+    for doc_id, content, emb, meta in all_docs:
+        if not emb:
+            continue
+        cos = cosine_similarity(query_emb, emb)
+        if payload.use_hybrid:
+            kw = kw_scores.get(doc_id, 0.0)
+            score = payload.alpha * cos + (1.0 - payload.alpha) * kw
+        else:
+            score = cos
+        if score >= payload.min_score:
+            scored.append((score, doc_id, content, meta))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    top = scored[: max(0, payload.top_k)]
+    return SearchKnowledgeResponse(
+        total=len(scored),
+        top_k=payload.top_k,
+        alpha=payload.alpha,
+        use_hybrid=payload.use_hybrid,
+        results=[SearchHit(doc_id=d, content=c, score=round(s, 6), meta=m) for s, d, c, m in top],
+    )
 

@@ -242,6 +242,16 @@ try:
 except Exception:
     logging.getLogger(__name__).exception("Failed to include Embedding routes")
 
+# Alias without /embeddings prefix for knowledge search
+try:
+    from .embeddings import SearchKnowledgeRequest, SearchKnowledgeResponse, search_knowledge as _search_knowledge
+
+    @app.post("/api/v1/search_knowledge", response_model=SearchKnowledgeResponse)
+    def search_knowledge_alias(payload: SearchKnowledgeRequest) -> SearchKnowledgeResponse:
+        return _search_knowledge(payload)
+except Exception:
+    logging.getLogger(__name__).exception("Failed to expose /api/v1/search_knowledge alias")
+
 # Serve static dashboard UI at /dashboard
 try:
     app.mount("/dashboard", StaticFiles(directory="web/dashboard", html=True), name="dashboard")
