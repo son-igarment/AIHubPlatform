@@ -258,6 +258,12 @@ try:
 except Exception:
     logging.getLogger(__name__).warning("Static dashboard directory not found; skipping mount")
 
+# Serve AI generator UI at /ai (React/Tailwind single-page via CDN)
+try:
+    app.mount("/ai", StaticFiles(directory="web/ai-generator", html=True), name="ai_generator")
+except Exception:
+    logging.getLogger(__name__).warning("Static ai-generator directory not found; skipping mount")
+
 
 @app.get("/")
 async def root_redirect():

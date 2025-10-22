@@ -1,0 +1,2 @@
+2025-10-22 07:38:19 | WARNING | ai | AI fallback used | id=a3b3a848-81a2-4146-8df9-4738cd439fc3 | ip=127.0.0.1 | ua=Mozilla/5.0 (Windows NT; Windows NT 10.0; en-US) WindowsPowerShell/5.1.19041.6328 | reason=openai_not_configured
+2025-10-22 07:38:25 | WARNING | ai | AI fallback used | id=7b6ea463-4a95-4dfe-b582-e4623db557b2 | ip=127.0.0.1 | ua=curl/8.13.0 | reason=openai_not_configured

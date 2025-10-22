@@ -194,3 +194,54 @@ async def generate_ai_text(payload: AITextRequest, request: Request) -> AITextRe
         resp = _fallback("error_fallback")
         _cache_put(payload.prompt, model, resp)
         return resp
+
+
+# Simple Server-Sent Events stream that emits the final result in small chunks
+@router.get("/generate_ai_text_stream")
+async def generate_ai_text_stream(prompt: str, request: Request):
+    """
+    Streams the generated content as text/event-stream for realtime UI updates.
+    This endpoint does not stream from the model; it generates once (with caching)
+    then emits the english and vietnamese fields incrementally.
+    """
+    from fastapi.responses import StreamingResponse
+    import asyncio
+
+    async def _gen():
+        try:
+            resp = await generate_ai_text(AITextRequest(prompt=prompt), request)
+            # Announce start
+            start_event = json.dumps({
+                "model": resp.model,
+                "request_id": resp.request_id,
+                "status": "started",
+            })
+            yield f"event: start\ndata: {start_event}\n\n"
+
+            # Helper to chunk a string for smoother UI updates
+            def chunk_text(text: str, size: int = 40):
+                for i in range(0, len(text), size):
+                    yield text[i : i + size]
+
+            # Stream English
+            for part in chunk_text(resp.english):
+                yield f"event: delta\ndata: {json.dumps({'lang':'english','text': part})}\n\n"
+                await asyncio.sleep(0.02)
+
+            yield f"event: section_end\ndata: {json.dumps({'lang':'english'})}\n\n"
+
+            # Stream Vietnamese
+            for part in chunk_text(resp.vietnamese):
+                yield f"event: delta\ndata: {json.dumps({'lang':'vietnamese','text': part})}\n\n"
+                await asyncio.sleep(0.02)
+
+            yield f"event: section_end\ndata: {json.dumps({'lang':'vietnamese'})}\n\n"
+
+            # Done
+            yield f"event: done\ndata: {json.dumps({'status':'completed'})}\n\n"
+        except Exception as e:  # pragma: no cover - streaming path
+            ai_logger.exception("SSE stream error: %s", repr(e))
+            err = json.dumps({"error": "stream_failed"})
+            yield f"event: error\ndata: {err}\n\n"
+
+    return StreamingResponse(_gen(), media_type="text/event-stream")
