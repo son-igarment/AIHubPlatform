@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from .config import settings
+from . import dashboard as dashboard_mod
 
 try:
     from openai import OpenAI  # type: ignore
@@ -290,7 +291,7 @@ def upsert_embedding(payload: UpsertEmbeddingRequest) -> UpsertEmbeddingResponse
 
 
 @router.post("/search", response_model=SearchResponse)
-def search_embeddings(payload: SearchRequest) -> SearchResponse:
+async def search_embeddings(payload: SearchRequest) -> SearchResponse:
     query_emb = compute_embedding(payload.query)
     docs = _all_documents()
     scored: List[Tuple[float, str, str, Optional[Dict[str, Any]]]] = []
@@ -302,17 +303,23 @@ def search_embeddings(payload: SearchRequest) -> SearchResponse:
             scored.append((score, doc_id, content, meta))
     scored.sort(key=lambda x: x[0], reverse=True)
     top = scored[: max(0, payload.top_k)]
-    return SearchResponse(
+    resp = SearchResponse(
         total=len(scored),
         top_k=payload.top_k,
         results=[
             SearchHit(doc_id=d, content=c, score=round(s, 6), meta=m) for s, d, c, m in top
         ],
     )
+    try:
+        if top:
+            await dashboard_mod.record_similarity(float(top[0][0]))
+    except Exception:
+        pass
+    return resp
 
 
 @router.post("/search_knowledge", response_model=SearchKnowledgeResponse)
-def search_knowledge(payload: SearchKnowledgeRequest) -> SearchKnowledgeResponse:
+async def search_knowledge(payload: SearchKnowledgeRequest) -> SearchKnowledgeResponse:
     query_emb = compute_embedding(payload.query)
     all_docs = _all_documents()
     # Prepare BM25 docs view
@@ -332,11 +339,16 @@ def search_knowledge(payload: SearchKnowledgeRequest) -> SearchKnowledgeResponse
             scored.append((score, doc_id, content, meta))
     scored.sort(key=lambda x: x[0], reverse=True)
     top = scored[: max(0, payload.top_k)]
-    return SearchKnowledgeResponse(
+    resp = SearchKnowledgeResponse(
         total=len(scored),
         top_k=payload.top_k,
         alpha=payload.alpha,
         use_hybrid=payload.use_hybrid,
         results=[SearchHit(doc_id=d, content=c, score=round(s, 6), meta=m) for s, d, c, m in top],
     )
-
+    try:
+        if top:
+            await dashboard_mod.record_similarity(float(top[0][0]))
+    except Exception:
+        pass
+    return resp

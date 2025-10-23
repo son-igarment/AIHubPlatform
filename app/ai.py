@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 from .config import settings
+from . import dashboard as dashboard_mod
 
 try:
     from openai import OpenAI  # type: ignore
@@ -81,6 +82,7 @@ async def generate_ai_text(payload: AITextRequest, request: Request) -> AITextRe
     model = settings.AI_MODEL
 
     # Cache first for stability and speed on repeated prompts
+    start_total = time.perf_counter()
     cached = _cache_get(payload.prompt, model)
     if cached:
         ai_logger.info(
@@ -91,6 +93,12 @@ async def generate_ai_text(payload: AITextRequest, request: Request) -> AITextRe
             model,
             len(payload.prompt),
         )
+        try:
+            dur_ms = int((time.perf_counter() - start_total) * 1000)
+            # Record generation for dashboard metrics (include cache hits)
+            await dashboard_mod.record_ai_generation(dur_ms)
+        except Exception:
+            pass
         return cached
 
     # Instruct the model to return strict JSON for reliable parsing
@@ -125,6 +133,11 @@ async def generate_ai_text(payload: AITextRequest, request: Request) -> AITextRe
         if client is None:
             resp = _fallback("openai_not_configured")
             _cache_put(payload.prompt, model, resp)
+            try:
+                dur_ms = int((time.perf_counter() - start_total) * 1000)
+                await dashboard_mod.record_ai_generation(dur_ms)
+            except Exception:
+                pass
             return resp
 
         # Run the OpenAI call in a thread with a tight timeout to keep total < 2s
@@ -178,6 +191,11 @@ async def generate_ai_text(payload: AITextRequest, request: Request) -> AITextRe
         _cache_put(payload.prompt, model, resp)
         # Budget check (defensive): if we somehow exceeded, still return; outer infra controls SLA.
         _ = time.perf_counter() - start
+        try:
+            dur_ms = int((time.perf_counter() - start_total) * 1000)
+            await dashboard_mod.record_ai_generation(dur_ms)
+        except Exception:
+            pass
         return resp
     except HTTPException:
         raise
@@ -193,6 +211,11 @@ async def generate_ai_text(payload: AITextRequest, request: Request) -> AITextRe
         )
         resp = _fallback("error_fallback")
         _cache_put(payload.prompt, model, resp)
+        try:
+            dur_ms = int((time.perf_counter() - start_total) * 1000)
+            await dashboard_mod.record_ai_generation(dur_ms)
+        except Exception:
+            pass
         return resp
 
 

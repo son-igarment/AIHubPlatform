@@ -149,3 +149,6 @@ Traceback (most recent call last):
               ^^^^^^^^^^^^^^^^^
 AttributeError: module 'bcrypt' has no attribute '__about__'
 2025-10-18 10:20:37 | INFO | auth | Application started. Demo users seeded.
+2025-10-22 07:38:07 | INFO | auth | Application started. Demo users seeded.
+2025-10-22 07:38:19 | WARNING | ai | AI fallback used | id=a3b3a848-81a2-4146-8df9-4738cd439fc3 | ip=127.0.0.1 | ua=Mozilla/5.0 (Windows NT; Windows NT 10.0; en-US) WindowsPowerShell/5.1.19041.6328 | reason=openai_not_configured
+2025-10-22 07:38:25 | WARNING | ai | AI fallback used | id=7b6ea463-4a95-4dfe-b582-e4623db557b2 | ip=127.0.0.1 | ua=curl/8.13.0 | reason=openai_not_configured
