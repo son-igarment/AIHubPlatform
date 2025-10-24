@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from datetime import timedelta
+from typing import Optional
 from dotenv import load_dotenv
 
 
@@ -23,6 +24,30 @@ class Settings:
     # Logging
     LOG_DIR: Path = Path(os.getenv("LOG_DIR", ROOT_DIR / "logs"))
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
+
+    # Automation
+    AUTOMATION_ENABLED: bool = os.getenv("AUTOMATION_ENABLED", "true").lower() != "false"
+    AUTOMATION_INTERVAL_HOURS: int = int(os.getenv("AUTOMATION_INTERVAL_HOURS", "6"))
+    AUTOMATION_RUN_AT_STARTUP: bool = os.getenv("AUTOMATION_RUN_AT_STARTUP", "true").lower() == "true"
+
+    # Data pipeline
+    AI_CRAWL_ENDPOINT: Optional[str] = os.getenv("AI_CRAWL_ENDPOINT")
+    AI_CRAWL_METHOD: str = os.getenv("AI_CRAWL_METHOD", "GET").upper()
+    AI_CRAWL_PAYLOAD: Optional[str] = os.getenv("AI_CRAWL_PAYLOAD")
+    AI_UPDATE_ENDPOINT: Optional[str] = os.getenv("AI_UPDATE_ENDPOINT")
+    AI_UPDATE_METHOD: str = os.getenv("AI_UPDATE_METHOD", "POST").upper()
+    AI_UPDATE_PAYLOAD: Optional[str] = os.getenv("AI_UPDATE_PAYLOAD")
+    AI_API_KEY: Optional[str] = os.getenv("AI_API_KEY")
+    AI_EXTRA_HEADERS: Optional[str] = os.getenv("AI_EXTRA_HEADERS")
+    AI_HTTP_TIMEOUT: int = int(os.getenv("AI_HTTP_TIMEOUT", "60"))
+
+    # Telegram notifications
+    TELEGRAM_BOT_TOKEN: Optional[str] = os.getenv("TELEGRAM_BOT_TOKEN")
+    TELEGRAM_CHAT_ID: Optional[str] = os.getenv("TELEGRAM_CHAT_ID")
+    TELEGRAM_THREAD_ID: Optional[str] = os.getenv("TELEGRAM_THREAD_ID")
+    TELEGRAM_PARSE_MODE: str = os.getenv("TELEGRAM_PARSE_MODE", "Markdown")
+    TELEGRAM_DISABLE_NOTIFICATIONS: bool = os.getenv("TELEGRAM_DISABLE_NOTIFICATIONS", "false").lower() == "true"
+    TELEGRAM_TIMEOUT: int = int(os.getenv("TELEGRAM_TIMEOUT", "15"))
 
     @property
     def access_expires(self) -> timedelta:

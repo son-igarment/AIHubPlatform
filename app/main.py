@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
 
 from .config import settings
+from .automation import automation_scheduler
 from .models import LoginRequest, TokenPair, RefreshRequest, UserPublic
 from .security import (
     authenticate,
@@ -132,6 +133,18 @@ async def startup_event():
         await dashboard.ensure_loop_started()
     except Exception:
         logging.getLogger(__name__).exception("Failed to start dashboard metrics loop")
+    try:
+        await automation_scheduler.start()
+    except Exception:
+        logging.getLogger(__name__).exception("Failed to start automation scheduler")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    try:
+        await automation_scheduler.shutdown()
+    except Exception:
+        logging.getLogger(__name__).exception("Failed to shut down automation scheduler")
 
 
 @app.get("/api/v1/health")

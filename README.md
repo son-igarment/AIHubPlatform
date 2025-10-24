@@ -12,6 +12,7 @@ AIHubPlatform là bộ khung demo phục vụ phát triển nhanh dịch vụ Au
 - **Dashboard metrics**: `app/dashboard.py` chạy background loop tạo dữ liệu tổng hợp (tasks/reports) và đẩy WebSocket `/ws/metrics`; REST hỗ trợ `/api/v1/tasks/summary`, `/api/v1/reports/summary`, `/api/v1/metrics/history`.
 - **Static UI**: `web/dashboard/index.html` mount tại `/dashboard`, kết nối tới API/WebSocket cùng origin nên không cần cấu hình CORS bổ sung.
 - **Script chạy server**: `scripts/run_server.ps1` kiểm tra/khởi tạo virtualenv, load `.env`, rồi start `uvicorn app.main:app --reload`.
+- **Automation scheduler**: `app/automation.py` sử dụng APScheduler để tự động crawl & update dữ liệu AI mỗi 6 giờ (mặc định) và gửi kết quả về Telegram.
 
 ```
 [Client] -> /api/v1/auth/login -> JWT access+refresh
@@ -52,6 +53,18 @@ Dashboard UI ----REST----> /api/v1/*summary, /metrics/history
 - `logs/app.log`: mọi request + exception (console + file), xoay vòng 5MB × 5.
 - `logs/auth.log`: logger chuyên dụng ghi login, refresh, lỗi xác thực (thông tin gồm request_id, email, ip, user-agent, duration).
 - Dashboard realtime đọc dữ liệu synthetic, thuận tiện cho việc benchmark UI hoặc thay thế bằng dữ liệu thật từ backend.
+
+## Automation Scheduler
+- Mặc định bật, chạy ngay sau khi server khởi động và lặp lại theo chu kỳ `AUTOMATION_INTERVAL_HOURS` (default 6 giờ).
+- Cấu hình qua biến môi trường:
+  - `AUTOMATION_ENABLED` (`true`/`false`)
+  - `AUTOMATION_INTERVAL_HOURS` (số giờ, ví dụ `6`)
+  - `AUTOMATION_RUN_AT_STARTUP` (`true` để chạy ngay khi start)
+  - `AI_CRAWL_ENDPOINT`, `AI_CRAWL_METHOD`, `AI_CRAWL_PAYLOAD`
+  - `AI_UPDATE_ENDPOINT`, `AI_UPDATE_METHOD`, `AI_UPDATE_PAYLOAD`
+  - `AI_API_KEY`, `AI_EXTRA_HEADERS` (JSON object string) để chèn header bổ sung.
+  - `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `TELEGRAM_THREAD_ID` (tùy chọn), `TELEGRAM_DISABLE_NOTIFICATIONS`
+- Nếu thiếu endpoint, bước tương ứng sẽ bị bỏ qua nhưng job vẫn ghi log. Kết quả mỗi lần chạy được gửi tới Telegram (nếu cấu hình) và ghi vào `logs/app.log`.
 
 ## Thư mục chính
 - `app/`: mã nguồn FastAPI (config, bảo mật, dashboard router).

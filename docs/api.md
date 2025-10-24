@@ -160,3 +160,11 @@ Response mẫu:
 ## Postman & CLI ngoài
 - **Postman**: `postman/AIHubPlatform_Auth.postman_collection.json` giúp kiểm thử nhanh luồng Auth/Role.
 - **PowerShell CLI**: `scripts/auth.ps1` hướng tới Auth service triển khai trên Render (`AIHUB_API_BASE_URL`), không trùng với backend FastAPI demo. Sử dụng khi cần test tích hợp với nền tảng gốc.
+
+## Automation Scheduler
+- `app/automation.py` chạy nền sử dụng APScheduler. Job mặc định chạy ngay khi khởi động và lặp lại mỗi `AUTOMATION_INTERVAL_HOURS` (6 giờ).
+- Hai bước chính trong job:
+  1. **Crawl**: gọi `AI_CRAWL_ENDPOINT` (method mặc định `GET`). Có thể khai báo payload JSON qua `AI_CRAWL_PAYLOAD`.
+  2. **Update**: gửi dữ liệu vừa crawl tới `AI_UPDATE_ENDPOINT` (method mặc định `POST`). Payload mặc định chứa trường `data` là kết quả crawl; có thể bổ sung qua `AI_UPDATE_PAYLOAD`.
+- Header bổ sung cho cả hai bước có thể cấu hình bằng `AI_API_KEY` (Bearer) hoặc JSON `AI_EXTRA_HEADERS`.
+- Tổng kết job được log vào `logs/app.log` và nếu cấu hình `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` thì sẽ đẩy thông báo Telegram.
