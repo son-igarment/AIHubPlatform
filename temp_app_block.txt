@@ -1,0 +1,19 @@
+        function App() {
+          const { tasks, reports, points, connected } = useDashboardData();
+          return e('div', { className:'container' },
+            e('div', { className:'header' },
+              e('div', { className:'brand' }, 'AIHub Mini Dashboard'),
+              e('div', { className:'badge', title: connected ? 'WebSocket Connected' : 'Disconnected', style:{ borderColor: connected? 'var(--ok)': 'var(--warn)', color:connected? 'var(--ok)': 'var(--warn)'} }, connected ? 'Realtime: ON' : 'Realtime: OFF')
+            ),
+            e('div', { className:'cards' },
+              e(KpiCard, { title:'Tasks', value: tasks.total, badges:[{label:'Done', value:tasks.completed, color:'var(--ok)'},{label:'Pending', value:tasks.pending, color:'var(--warn)'},{label:'Failed', value:tasks.failed, color:'var(--err)'}] }),
+              e(KpiCard, { title:'Reports', value: reports.total, badges:[{label:'Today', value:reports.delivered_today, color:'var(--ok)'},{label:'Review', value:reports.pending_review, color:'var(--warn)'},{label:'Failed', value:reports.failed, color:'var(--err)'}] }),
+              e(KpiCard, { title:'Updated', value: (tasks.updated_at||'').replace('T',' ').slice(0,19) || '-', badges:[] }),
+              e(KpiCard, { title:'Users', value: 'Demo', badges:[{label:'Admin', value:'1', color:'var(--accent)'},{label:'Dev', value:'1', color:'var(--accent)'}] })
+            ),
+            e('div', { className:'row' },
+              e(LineChart, { points })
+            ),
+            e('div', { className:'footer' }, 'Tip: Mở trên mobile để kiểm tra responsive. Load tối ưu < 2.5s; chart realtime qua WebSocket (fallback polling).')
+          );
+        }

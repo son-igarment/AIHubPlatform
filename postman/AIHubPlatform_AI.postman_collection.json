@@ -1,0 +1,185 @@
+{
+  "info": {
+    "name": "AIHubPlatform - AI Integration",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "3e5b1b26-6b9a-4d5f-9c7b-1f6d1a9e7a10"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Generate AI Text (EN-VN)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"prompt\": \"Introduce the platform features\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/generate_ai_text",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "v1", "generate_ai_text" ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Responds under 2s', function () {",
+              "  pm.expect(pm.response.responseTime).to.be.below(2000);",
+              "});",
+              "",
+              "let jsonData;",
+              "pm.test('Response is valid JSON', function () {",
+              "  jsonData = pm.response.json();",
+              "  pm.expect(jsonData).to.be.an('object');",
+              "});",
+              "",
+              "pm.test('Has bilingual fields', function () {",
+              "  pm.expect(jsonData).to.have.property('english');",
+              "  pm.expect(jsonData).to.have.property('vietnamese');",
+              "  pm.expect(jsonData.english).to.be.a('string').and.not.empty;",
+              "  pm.expect(jsonData.vietnamese).to.be.a('string').and.not.empty;",
+              "});",
+              "",
+              "pm.test('Has model and request_id', function () {",
+              "  pm.expect(jsonData).to.have.property('model');",
+              "  pm.expect(jsonData).to.have.property('request_id');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Embeddings - Upsert",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"doc_id\": \"demo-1\",\n  \"content\": \"Apple releases the latest iPhone with advanced camera.\",\n  \"meta\": { \"source\": \"postman\" }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/embeddings/upsert",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","v1","embeddings","upsert"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+              "const json = pm.response.json();",
+              "pm.test('Returns doc_id and dim', function () { pm.expect(json.doc_id).to.be.a('string'); pm.expect(json.dim).to.be.a('number'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Embeddings - Search",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"smartphone by Apple\",\n  \"top_k\": 3\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/embeddings/search",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","v1","embeddings","search"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+              "const json = pm.response.json();",
+              "pm.test('Has results array', function () { pm.expect(json.results).to.be.an('array'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Knowledge - Search (Hybrid)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"smartphone by Apple\",\n  \"top_k\": 3,\n  \"alpha\": 0.7,\n  \"use_hybrid\": true\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/embeddings/search_knowledge",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","v1","embeddings","search_knowledge"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+              "const json = pm.response.json();",
+              "pm.test('Has results array', function () { pm.expect(json.results).to.be.an('array'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Knowledge - Search (Alias)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"python web api\",\n  \"top_k\": 3,\n  \"alpha\": 0.7,\n  \"use_hybrid\": true\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/search_knowledge",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","v1","search_knowledge"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+              "const json = pm.response.json();",
+              "pm.test('Has results array', function () { pm.expect(json.results).to.be.an('array'); });"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

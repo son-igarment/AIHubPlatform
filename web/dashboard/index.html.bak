@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="vi">
   <head>
     <meta charset="utf-8" />
@@ -33,7 +33,6 @@
     <script defer src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script defer src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
   </head>
   <body>
     <div id="root"></div>
@@ -54,7 +53,7 @@
           );
         }
 
-        function LineChart({ points, label='Metric', color }) {
+        function LineChart({ points }) {
           const chartRef = React.useRef(null);
           const canvasRef = React.useRef(null);
           React.useEffect(() => {
@@ -65,9 +64,9 @@
               data: {
                 labels: (points||[]).map(p => new Date(p.ts)),
                 datasets: [{
-                  label,
+                  label: 'Metric',
                   data: (points||[]).map(p => p.value),
-                  borderColor: color || (getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#6ea8fe'),
+                  borderColor: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#6ea8fe',
                   backgroundColor: 'rgba(110,168,254,.15)',
                   tension: .3,
                   pointRadius: 0,
@@ -113,60 +112,16 @@
           return e('div', { className:'chart-wrap', style:{height:'280px'} }, e('canvas', { ref: canvasRef }));
         }
 
-        function D3Histogram({ values, bins=10, width='100%', height=220, color='#6ea8fe' }) {
-          const ref = React.useRef(null);
-          React.useEffect(() => {
-            if (!ref.current || !window.d3) return;
-            const node = ref.current;
-            while (node.firstChild) node.removeChild(node.firstChild);
-            const margin = {top: 8, right: 8, bottom: 24, left: 32};
-            const w = (node.clientWidth || 320);
-            const h = (typeof height === 'number') ? height : 220;
-            const innerW = w - margin.left - margin.right;
-            const innerH = h - margin.top - margin.bottom;
-            const svg = d3.select(node).append('svg').attr('width', w).attr('height', h);
-            const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
-            const data = (values||[]).map(v => Math.max(0, Math.min(1, +v)));
-            const x = d3.scaleLinear().domain([0,1]).range([0, innerW]);
-            const thresholds = x.ticks(bins);
-            const hist = d3.histogram().domain(x.domain()).thresholds(thresholds);
-            const binsData = hist(data);
-            const y = d3.scaleLinear().domain([0, d3.max(binsData, d => d.length) || 1]).nice().range([innerH, 0]);
-            const bar = g.selectAll('.bar').data(binsData).enter().append('g').attr('class','bar').attr('transform', d => `translate(${x(d.x0)},${y(d.length)})`);
-            bar.append('rect').attr('x', 1).attr('width', d => Math.max(0, x(d.x1) - x(d.x0) - 1)).attr('height', d => innerH - y(d.length)).attr('fill', color).attr('opacity', 0.7);
-            const axX = d3.axisBottom(x).ticks(5).tickFormat(d3.format('.1f'));
-            const axY = d3.axisLeft(y).ticks(4);
-            g.append('g').attr('transform', `translate(0,${innerH})`).call(axX).selectAll('text').attr('fill', 'currentColor');
-            g.append('g').call(axY).selectAll('text').attr('fill', 'currentColor');
-          }, [values, bins, height, color]);
-          return e('div', { className:'chart-wrap', ref, style:{width, height} });
-        }
-
         function useDashboardData() {
           const [tasks, setTasks] = React.useState({ total:0, completed:0, pending:0, failed:0, updated_at: '' });
           const [reports, setReports] = React.useState({ total:0, delivered_today:0, pending_review:0, failed:0, updated_at: '' });
           const [points, setPoints] = React.useState([]);
-          const [ai, setAI] = React.useState({ total_generations:0, avg_similarity:0, similarity_count:0, p50_latency_ms:0, p95_latency_ms:0, avg_latency_ms:0, updated_at:'' });
-          const [aiLat, setAiLat] = React.useState([]);
-          const [aiSims, setAiSims] = React.useState([]);
           const [connected, setConnected] = React.useState(false);
 
           React.useEffect(() => {
             fetchJSON('/api/v1/tasks/summary').then(setTasks).catch(()=>{});
             fetchJSON('/api/v1/reports/summary').then(setReports).catch(()=>{});
             fetchJSON('/api/v1/metrics/history?limit=120').then(d => setPoints(d.points||[])).catch(()=>{});
-            fetchJSON('/api/v1/ai/stats').then(setAI).catch(()=>{});
-            fetchJSON('/api/v1/ai/history?limit=120').then(d => {
-              const lat = (d.latencies||[]).map(p => ({ ts:p.ts, value:p.ms }));
-              setAiLat(lat);
-              setAiSims(d.similarities||[]);
-            }).catch(()=>{});
-            fetchJSON('/api/v1/ai/stats').then(setAI).catch(()=>{});
-            fetchJSON('/api/v1/ai/history?limit=120').then(d => {
-              const lat = (d.latencies||[]).map(p => ({ ts:p.ts, value:p.ms }));
-              setAiLat(lat);
-              setAiSims(d.similarities||[]);
-            }).catch(()=>{});
           }, []);
 
           React.useEffect(() => {
@@ -185,17 +140,10 @@
                     if (Array.isArray(msg.points)) setPoints(msg.points);
                     if (msg.tasks) setTasks(msg.tasks);
                     if (msg.reports) setReports(msg.reports);
-                    if (msg.ai) setAI(msg.ai);
                   } else if (msg.type === 'metric') {
                     setPoints(prev => prev.concat([msg.point]).slice(-300));
                     if (msg.tasks) setTasks(msg.tasks);
                     if (msg.reports) setReports(msg.reports);
-                  } else if (msg.type === 'ai_tick') {
-                    if (msg.ai) setAI(msg.ai);
-                    if (msg.latency) setAiLat(prev => prev.concat([{ ts: msg.latency.ts, value: msg.latency.ms }]).slice(-300));
-                  } else if (msg.type === 'ai_similarity') {
-                    if (msg.ai) setAI(msg.ai);
-                    if (typeof msg.similarity === 'number') setAiSims(prev => prev.concat([msg.similarity]).slice(-300));
                   }
                   try { ws.send('ok'); } catch {}
                 } catch {}
@@ -204,11 +152,11 @@
             return () => { try { ws && ws.close(); } catch{} };
           }, []);
 
-          return { tasks, reports, points, ai, aiLat, aiSims, connected };
+          return { tasks, reports, points, connected };
         }
 
         function App() {
-          const { tasks, reports, points, ai, aiLat, aiSims, connected } = useDashboardData();
+          const { tasks, reports, points, connected } = useDashboardData();
           return e('div', { className:'container' },
             e('div', { className:'header' },
               e('div', { className:'brand' }, 'AIHub Mini Dashboard'),
@@ -218,24 +166,12 @@
               e(KpiCard, { title:'Tasks', value: tasks.total, badges:[{label:'Done', value:tasks.completed, color:'var(--ok)'},{label:'Pending', value:tasks.pending, color:'var(--warn)'},{label:'Failed', value:tasks.failed, color:'var(--err)'}] }),
               e(KpiCard, { title:'Reports', value: reports.total, badges:[{label:'Today', value:reports.delivered_today, color:'var(--ok)'},{label:'Review', value:reports.pending_review, color:'var(--warn)'},{label:'Failed', value:reports.failed, color:'var(--err)'}] }),
               e(KpiCard, { title:'Updated', value: (tasks.updated_at||'').replace('T',' ').slice(0,19) || '-', badges:[] }),
-              e(KpiCard, { title:'AI Gen', value: ai.total_generations, badges:[{label:'P50', value: ai.p50_latency_ms + 'ms', color:'var(--ok)'},{label:'P95', value: ai.p95_latency_ms + 'ms', color:'var(--warn)'},{label:'Avg', value: ai.avg_latency_ms + 'ms', color:'var(--accent)'}] })
-            ),
-            e('div', { className:'row' },
-              e(LineChart, { points, label:'System Metric', color:'var(--accent)' })
-            ),
-            e('div', { className:'cards' },
-              e(KpiCard, { title:'Độ tương đồng TB', value: (ai.avg_similarity||0).toFixed(3), badges:[{label:'Samples', value: ai.similarity_count, color:'var(--accent)'}] }),
-              e(KpiCard, { title:'Latency', value: ai.avg_latency_ms + 'ms', badges:[{label:'P50', value: ai.p50_latency_ms + 'ms', color:'var(--ok)'},{label:'P95', value: ai.p95_latency_ms + 'ms', color:'var(--warn)'}] }),
-              e(KpiCard, { title:'Cập nhật', value: (ai.updated_at||'').replace('T',' ').slice(0,19) || '-', badges:[] }),
               e(KpiCard, { title:'Users', value: 'Demo', badges:[{label:'Admin', value:'1', color:'var(--accent)'},{label:'Dev', value:'1', color:'var(--accent)'}] })
             ),
             e('div', { className:'row' },
-              e(LineChart, { points: aiLat, label:'AI Latency (ms)', color:'var(--ok)' })
+              e(LineChart, { points })
             ),
-            e('div', { className:'row' },
-              e(D3Histogram, { values: aiSims, bins: 12, height: 260, color: 'var(--accent)' })
-            ),
-            e('div', { className:'footer' }, 'Tip: Mở trên mobile để kiểm tra responsive. Load tối ưu < 2.5s; chart realtime qua WebSocket (fallback polling).')
+            e('div', { className:'footer' }, 'Tip: Má»Ÿ trÃªn mobile Ä‘á»ƒ kiá»ƒm tra responsive. Load tá»‘i Æ°u < 2.5s; chart realtime qua WebSocket (fallback polling).')
           );
         }
 
@@ -244,4 +180,5 @@
     </script>
   </body>
   </html>
+
 

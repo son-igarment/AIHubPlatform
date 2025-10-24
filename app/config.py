@@ -25,21 +25,33 @@ class Settings:
     LOG_DIR: Path = Path(os.getenv("LOG_DIR", ROOT_DIR / "logs"))
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
 
-    # Automation
+    # Automation scheduler
     AUTOMATION_ENABLED: bool = os.getenv("AUTOMATION_ENABLED", "true").lower() != "false"
     AUTOMATION_INTERVAL_HOURS: int = int(os.getenv("AUTOMATION_INTERVAL_HOURS", "6"))
     AUTOMATION_RUN_AT_STARTUP: bool = os.getenv("AUTOMATION_RUN_AT_STARTUP", "true").lower() == "true"
 
-    # Data pipeline
+    # Data pipeline targets
     AI_CRAWL_ENDPOINT: Optional[str] = os.getenv("AI_CRAWL_ENDPOINT")
     AI_CRAWL_METHOD: str = os.getenv("AI_CRAWL_METHOD", "GET").upper()
     AI_CRAWL_PAYLOAD: Optional[str] = os.getenv("AI_CRAWL_PAYLOAD")
     AI_UPDATE_ENDPOINT: Optional[str] = os.getenv("AI_UPDATE_ENDPOINT")
     AI_UPDATE_METHOD: str = os.getenv("AI_UPDATE_METHOD", "POST").upper()
     AI_UPDATE_PAYLOAD: Optional[str] = os.getenv("AI_UPDATE_PAYLOAD")
+    AI_HTTP_TIMEOUT: int = int(os.getenv("AI_HTTP_TIMEOUT", "60"))
     AI_API_KEY: Optional[str] = os.getenv("AI_API_KEY")
     AI_EXTRA_HEADERS: Optional[str] = os.getenv("AI_EXTRA_HEADERS")
-    AI_HTTP_TIMEOUT: int = int(os.getenv("AI_HTTP_TIMEOUT", "60"))
+
+    # AI generation defaults
+    OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
+    AI_MODEL: str = os.getenv("AI_MODEL", "gpt-4o-mini")
+    AI_TIMEOUT_MS: int = int(os.getenv("AI_TIMEOUT_MS", "1800"))
+    AI_CACHE_TTL_SECONDS: int = int(os.getenv("AI_CACHE_TTL_SECONDS", "600"))
+    AI_CACHE_MAX: int = int(os.getenv("AI_CACHE_MAX", "32"))
+
+    # Embedding / knowledge base
+    KNOWLEDGE_DB_PATH: Path = Path(os.getenv("KNOWLEDGE_DB_PATH", ROOT_DIR / "aihub_knowledge.db"))
+    EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+    EMBEDDING_DIM: int = int(os.getenv("EMBEDDING_DIM", "384"))
 
     # Telegram notifications
     TELEGRAM_BOT_TOKEN: Optional[str] = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -60,4 +72,3 @@ class Settings:
 
 settings = Settings()
 settings.LOG_DIR.mkdir(parents=True, exist_ok=True)
-
