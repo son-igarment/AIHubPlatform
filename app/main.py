@@ -12,6 +12,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
 
 from .config import settings
+from . import dashboard
+from . import modules as modules_core
 from .automation import automation_scheduler
 from .models import LoginRequest, TokenPair, RefreshRequest, UserPublic
 from .security import (
@@ -25,13 +27,14 @@ from .security import (
     seed_demo_users,
     validate_refresh_token,
 )
-from . import dashboard
+from .security import decode_token
 
 
 def setup_logging(log_dir: Path, level: str = "INFO") -> None:
     log_file = log_dir / "app.log"
     auth_file = log_dir / "auth.log"
     ai_file = log_dir / "ai.log"
+    modules_file = log_dir / "modules_toggles.log"
     root_logger = logging.getLogger()
     root_logger.setLevel(getattr(logging, level.upper(), logging.INFO))
 
@@ -66,6 +69,13 @@ def setup_logging(log_dir: Path, level: str = "INFO") -> None:
         aih = RotatingFileHandler(ai_file, maxBytes=5 * 1024 * 1024, backupCount=5, encoding="utf-8")
         aih.setFormatter(fmt)
         ai_logger.addHandler(aih)
+
+    # Dedicated modules logger to logs/modules_toggles.log (duplicate guard)
+    modules_logger = logging.getLogger("modules")
+    if not any(isinstance(h, RotatingFileHandler) and getattr(h, 'baseFilename', '') == str(modules_file) for h in modules_logger.handlers):
+        mh = RotatingFileHandler(modules_file, maxBytes=2 * 1024 * 1024, backupCount=3, encoding="utf-8")
+        mh.setFormatter(fmt)
+        modules_logger.addHandler(mh)
 
 
 app = FastAPI(title=settings.APP_NAME, version="1.0.0")
@@ -136,6 +146,11 @@ async def add_request_context(request: Request, call_next):
 async def startup_event():
     seed_demo_users()
     logger.info("Application started. Demo users seeded.")
+    # Ensure modules.json exists with defaults
+    try:
+        modules_core.ensure_modules_file()
+    except Exception:
+        logging.getLogger(__name__).exception("Failed to initialize modules.json")
     # kick off dashboard metrics loop
     try:
         await dashboard.ensure_loop_started()
@@ -247,6 +262,35 @@ try:
     app.include_router(ai.router, prefix="/api/v1")
 except Exception:
     logging.getLogger(__name__).exception("Failed to include AI routes")
+
+# Include Modules API routes
+try:
+    from .modules_api import router as modules_router
+    # Provide both versioned and legacy paths
+    app.include_router(modules_router, prefix="/api/v1")
+    app.include_router(modules_router, prefix="/api")
+except Exception:
+    logging.getLogger(__name__).exception("Failed to include Modules routes")
+
+
+# Lightweight auth middleware for module routes
+@app.middleware("http")
+async def auth_middleware_for_modules(request: Request, call_next):
+    path = request.url.path
+    if path.startswith("/api/module") or path.startswith("/api/v1/module"):
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.lower().startswith("bearer "):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing bearer token")
+        token = auth_header.split(" ", 1)[1]
+        try:
+            payload = decode_token(token)
+            request.state.user_sub = payload.get("sub")
+        except HTTPException:
+            raise
+        except Exception:
+            logging.getLogger(__name__).exception("Auth middleware error")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    return await call_next(request)
 
 # Include Embedding routes
 try:
