@@ -272,6 +272,15 @@ try:
 except Exception:
     logging.getLogger(__name__).exception("Failed to include Modules routes")
 
+# Include Task/Webhook routes (ClickUp → Done ⇒ Next)
+try:
+    from .tasks import router as tasks_router
+    # Provide both versioned and legacy paths
+    app.include_router(tasks_router, prefix="/api/v1")
+    app.include_router(tasks_router, prefix="/api")
+except Exception:
+    logging.getLogger(__name__).exception("Failed to include Task/Webhook routes")
+
 
 # Lightweight auth middleware for module routes
 @app.middleware("http")
