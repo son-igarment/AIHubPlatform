@@ -3,13 +3,14 @@ import json
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List, Set
 
 import requests
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
 from .config import settings
+from . import embeddings as emb
 
 
 logger = logging.getLogger("automation")
@@ -81,6 +82,9 @@ class AutomationScheduler:
         self._job_id = "ai_data_refresh"
         self._lock = asyncio.Lock()
         self._last_result: Optional[AutomationResult] = None
+        # v3 state
+        self._seen_doc_ids: Set[str] = set()
+        self._sim_counter: int = 0
 
     async def start(self) -> None:
         if not settings.AUTOMATION_ENABLED:
@@ -112,6 +116,10 @@ class AutomationScheduler:
 
         if settings.AUTOMATION_RUN_AT_STARTUP:
             await self.run_now(origin="startup")
+
+        # v3: Optional quick simulation cycles (>=2) to validate behavior
+        if settings.AUTOMATION_SIMULATE_CYCLES >= 2:
+            await self._run_simulation(settings.AUTOMATION_SIMULATE_CYCLES)
 
     async def shutdown(self) -> None:
         if self._scheduler.running:
@@ -155,6 +163,27 @@ class AutomationScheduler:
             )
             self._last_result = result
             await self._notify_telegram(result)
+            # Emit a valid JSON line with job summary (v3)
+            try:
+                logger.info(
+                    json.dumps(
+                        {
+                            "version": "scheduler_v3",
+                            "status": status,
+                            "origin": origin,
+                            "started_at": started.isoformat(),
+                            "finished_at": finished.isoformat(),
+                            "duration_seconds": result.duration_seconds,
+                            "crawl": crawl_summary,
+                            "update": update_summary,
+                        },
+                        ensure_ascii=False,
+                        default=str,
+                        sort_keys=True,
+                    )
+                )
+            except Exception:
+                logger.exception("Failed to emit JSON job log")
             logger.info(
                 "Automation job finished (%s) status=%s duration=%.2fs",
                 origin,
@@ -167,9 +196,24 @@ class AutomationScheduler:
         await self.run_now(origin="scheduler")
 
     async def _crawl_data(self) -> Dict[str, Any]:
+        """v3: Crawl keywords; simulate when endpoint missing.
+
+        Preferred shape: {"items": [{"doc_id": str, "content": str, "meta": {...}}, ...]}
+        """
         if not settings.AI_CRAWL_ENDPOINT:
-            logger.info("AI_CRAWL_ENDPOINT not configured; crawl step skipped.")
-            return {"status": "skipped", "reason": "AI_CRAWL_ENDPOINT not set"}
+            self._sim_counter += 1
+            cycle = self._sim_counter
+            items: List[Dict[str, Any]] = [
+                {"doc_id": "kw:fastapi", "content": "FastAPI tutorial and tips", "meta": {"lang": "en"}},
+                {"doc_id": "kw:apscheduler", "content": "APScheduler interval job guide", "meta": {"lang": "en"}},
+                {"doc_id": "kw:embeddings", "content": "Local vs OpenAI embeddings", "meta": {"lang": "en"}},
+            ]
+            if cycle >= 2:
+                items.append({"doc_id": "kw:fastapi", "content": "FastAPI tutorial and tips", "meta": {"cycle": cycle}})  # duplicate
+                items.append({"doc_id": "kw:embeddings", "content": "OpenAI embeddings vs local BM25", "meta": {"cycle": cycle}})  # updated
+                items.append({"doc_id": f"kw:new-{cycle}", "content": f"New item cycle {cycle}", "meta": {"cycle": cycle}})
+            logger.info("Simulated crawl cycle=%s items=%s", cycle, len(items))
+            return {"status": "ok", "source": "simulated", "cycle": cycle, "items": items}
 
         payload = _parse_payload(settings.AI_CRAWL_PAYLOAD)
         logger.info("Crawling AI data from %s", settings.AI_CRAWL_ENDPOINT)
@@ -183,29 +227,113 @@ class AutomationScheduler:
         return response
 
     async def _update_data(self, crawl_summary: Dict[str, Any]) -> Dict[str, Any]:
-        if not settings.AI_UPDATE_ENDPOINT:
-            logger.info("AI_UPDATE_ENDPOINT not configured; update step skipped.")
-            return {"status": "skipped", "reason": "AI_UPDATE_ENDPOINT not set"}
+        """v3: Update embeddings with dedupe and rows_changed accounting.
 
-        payload = _parse_payload(settings.AI_UPDATE_PAYLOAD)
-        payload.setdefault("data", crawl_summary.get("data") or crawl_summary)
+        If external AI_UPDATE_ENDPOINT is set, delegate and normalize response; else perform local upserts.
+        """
+        if settings.AI_UPDATE_ENDPOINT:
+            payload = _parse_payload(settings.AI_UPDATE_PAYLOAD)
+            payload.setdefault("data", crawl_summary.get("data") or crawl_summary)
+            logger.info("Updating AI data via %s", settings.AI_UPDATE_ENDPOINT)
+            response = await asyncio.to_thread(
+                self._perform_request,
+                settings.AI_UPDATE_ENDPOINT,
+                settings.AI_UPDATE_METHOD,
+                payload,
+            )
+            logger.info("Update request status=%s", response.get("status_code"))
+            rows_changed = 0
+            processed = 0
+            try:
+                data = response.get("data", {})
+                if isinstance(data, dict):
+                    rc = data.get("rows_changed")
+                    pr = data.get("processed")
+                    if isinstance(rc, int):
+                        rows_changed = rc
+                    if isinstance(pr, int):
+                        processed = pr
+            except Exception:
+                pass
+            return {"status": "ok", "mode": "external", "rows_changed": rows_changed, "processed": processed, "raw": response}
 
-        logger.info("Updating AI data via %s", settings.AI_UPDATE_ENDPOINT)
-        response = await asyncio.to_thread(
-            self._perform_request,
-            settings.AI_UPDATE_ENDPOINT,
-            settings.AI_UPDATE_METHOD,
-            payload,
-        )
-        logger.info("Update request status=%s", response.get("status_code"))
-        return response
+        # Local bulk upsert path
+        items: List[Dict[str, Any]] = []
+        if isinstance(crawl_summary.get("items"), list):
+            items = [x for x in crawl_summary["items"] if isinstance(x, dict)]
+        elif isinstance(crawl_summary.get("data"), list):
+            items = [x for x in crawl_summary["data"] if isinstance(x, dict)]
+        elif isinstance(crawl_summary.get("data"), dict) and isinstance(crawl_summary["data"].get("items"), list):
+            items = [x for x in crawl_summary["data"]["items"] if isinstance(x, dict)]
+
+        processed = 0
+        inserted = 0
+        updated = 0
+        duplicates_skipped = 0
+
+        con = emb._connect()
+        try:
+            for raw in items:
+                doc_id = str(raw.get("doc_id") or raw.get("id") or "").strip()
+                content = raw.get("content")
+                meta = raw.get("meta") if isinstance(raw.get("meta"), dict) else None
+                if not doc_id or not isinstance(content, str) or not content.strip():
+                    continue
+
+                processed += 1
+                # in-run duplicate guard
+                if doc_id in self._seen_doc_ids:
+                    duplicates_skipped += 1
+                    continue
+                self._seen_doc_ids.add(doc_id)
+
+                cur = con.execute("SELECT content FROM documents WHERE doc_id=?", (doc_id,))
+                row = cur.fetchone()
+                if row is None:
+                    emb_vec = emb.compute_embedding(content)
+                    emb._upsert_document(doc_id, content, emb_vec, meta)
+                    inserted += 1
+                    continue
+
+                prev_content = row[0] if isinstance(row[0], str) else None
+                if prev_content == content:
+                    duplicates_skipped += 1
+                    continue
+
+                emb_vec = emb.compute_embedding(content)
+                emb._upsert_document(doc_id, content, emb_vec, meta)
+                updated += 1
+        finally:
+            con.close()
+
+        rows_changed = inserted + updated
+        summary = {
+            "status": "ok",
+            "mode": "local",
+            "processed": processed,
+            "inserted": inserted,
+            "updated": updated,
+            "duplicates_skipped": duplicates_skipped,
+            "rows_changed": rows_changed,
+        }
+        logger.info("v3 update summary: %s", _summarize_dict(summary))
+        return summary
 
     async def _notify_telegram(self, result: AutomationResult) -> None:
         if not settings.TELEGRAM_BOT_TOKEN or not settings.TELEGRAM_CHAT_ID:
             logger.debug("Telegram credentials missing; notification skipped.")
             return
 
-        message = result.to_message()
+        # Add record counts to Telegram message if available
+        rows_changed = None
+        processed = None
+        if isinstance(result.update_summary, dict):
+            rows_changed = result.update_summary.get("rows_changed")
+            processed = result.update_summary.get("processed")
+        extra = ""
+        if isinstance(rows_changed, int) and isinstance(processed, int):
+            extra = f"\nRecords: rows_changed={rows_changed} processed={processed}"
+        message = result.to_message() + extra
 
         def _send() -> None:
             url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -267,6 +395,11 @@ class AutomationScheduler:
     @property
     def last_result(self) -> Optional[AutomationResult]:
         return self._last_result
+
+    async def _run_simulation(self, cycles: int) -> None:
+        for i in range(max(0, cycles)):
+            await self.run_now(origin=f"simulation#{i+1}")
+            await asyncio.sleep(max(0.0, settings.AUTOMATION_SIMULATE_DELAY_SEC))
 
 
 automation_scheduler = AutomationScheduler()

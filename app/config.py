@@ -29,6 +29,9 @@ class Settings:
     AUTOMATION_ENABLED: bool = os.getenv("AUTOMATION_ENABLED", "true").lower() != "false"
     AUTOMATION_INTERVAL_HOURS: int = int(os.getenv("AUTOMATION_INTERVAL_HOURS", "6"))
     AUTOMATION_RUN_AT_STARTUP: bool = os.getenv("AUTOMATION_RUN_AT_STARTUP", "true").lower() == "true"
+    # v3 simulation controls (optional)
+    AUTOMATION_SIMULATE_CYCLES: int = int(os.getenv("AUTOMATION_SIMULATE_CYCLES", "0"))
+    AUTOMATION_SIMULATE_DELAY_SEC: float = float(os.getenv("AUTOMATION_SIMULATE_DELAY_SEC", "0.2"))
 
     # Data pipeline targets
     AI_CRAWL_ENDPOINT: Optional[str] = os.getenv("AI_CRAWL_ENDPOINT")
