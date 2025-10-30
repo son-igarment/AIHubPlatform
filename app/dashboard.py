@@ -2,12 +2,14 @@ import asyncio
 import json
 import random
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Deque, Dict, List, Optional
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
+
+from . import modules as modules_core
 
 
 router = APIRouter()
@@ -52,6 +54,80 @@ class AIStats(BaseModel):
     avg_latency_ms: int
     updated_at: str
 
+
+class ModuleState(BaseModel):
+    name: str
+    enabled: bool
+
+
+class ModulesSummary(BaseModel):
+    total: int
+    enabled: int
+    disabled: int
+
+
+class RequestPerMinute(BaseModel):
+    minute: str
+    count: int
+
+
+class LatencyPerMinute(BaseModel):
+    minute: str
+    avg_latency_ms: float
+
+
+class HeatmapSlot(BaseModel):
+    minute: str
+    label: str
+    bins: List[int]
+
+
+class InsightData(BaseModel):
+    modules: List[ModuleState]
+    modules_summary: ModulesSummary
+    requests_per_minute: List[RequestPerMinute]
+    latency_per_minute: List[LatencyPerMinute]
+    similarity_heatmap: List[HeatmapSlot]
+    updated_at: str
+
+
+@dataclass
+class _RequestMinute:
+    minute: datetime
+    count: int = 0
+    total_latency_ms: int = 0
+
+    @property
+    def avg_latency_ms(self) -> float:
+        if self.count <= 0:
+            return 0.0
+        return self.total_latency_ms / self.count
+
+    def to_request_payload(self) -> Dict[str, object]:
+        return {"minute": self.minute.isoformat(), "count": self.count}
+
+    def to_latency_payload(self) -> Dict[str, object]:
+        avg = round(self.avg_latency_ms, 2)
+        return {"minute": self.minute.isoformat(), "avg_latency_ms": avg}
+
+
+@dataclass
+class _HeatBucket:
+    minute: datetime
+    bins: List[int] = field(default_factory=lambda: [0] * 10)
+
+    def add(self, score: float) -> None:
+        bins_len = len(self.bins)
+        idx = max(0, min(bins_len - 1, int(score * bins_len - 1e-9)))
+        self.bins[idx] += 1
+
+    def to_payload(self) -> Dict[str, object]:
+        return {
+            "minute": self.minute.isoformat(),
+            "label": self.minute.strftime("%H:%M"),
+            "bins": list(self.bins),
+        }
+
 @dataclass
 class _State:
     # metrics
@@ -64,6 +140,8 @@ class _State:
     ai_total_generations: int
     ai_similarity_samples: Deque[float]
     ai_latencies: Deque[AILatencyPoint]
+    request_minutes: Deque[_RequestMinute]
+    similarity_heatmap: Deque[_HeatBucket]
     # concurrency
     lock: asyncio.Lock
     # websocket clients
@@ -80,6 +158,8 @@ state = _State(
     ai_total_generations=0,
     ai_similarity_samples=deque(maxlen=400),
     ai_latencies=deque(maxlen=400),
+    request_minutes=deque(maxlen=120),
+    similarity_heatmap=deque(maxlen=48),
     lock=asyncio.Lock(),
     clients=[],
     running=False,
@@ -179,11 +259,27 @@ async def record_similarity(score: float) -> None:
         # clamp to [0,1] for safety
         s = max(0.0, min(1.0, float(score)))
         state.ai_similarity_samples.append(s)
+        now_minute = datetime.now(timezone.utc).replace(second=0, microsecond=0)
+        if state.similarity_heatmap and state.similarity_heatmap[-1].minute == now_minute:
+            bucket = state.similarity_heatmap[-1]
+        else:
+            bucket = _HeatBucket(minute=now_minute)
+            state.similarity_heatmap.append(bucket)
+        bucket.add(s)
+        heatmap_payload = [hb.to_payload() for hb in list(state.similarity_heatmap)[-12:]]
+        updated_at = _now_iso()
     try:
         await _broadcast({
             "type": "ai_similarity",
             "ai": await get_ai_stats_raw(),
             "similarity": s,
+        })
+        await _broadcast({
+            "type": "insight",
+            "insight": {
+                "similarity_heatmap": heatmap_payload,
+                "updated_at": updated_at,
+            },
         })
     except Exception:
         pass
@@ -245,6 +341,75 @@ async def get_metric_history(limit: int = 120) -> Dict[str, List[MetricPoint]]:
         return {"points": [p.model_dump() for p in data]}
 
 
+@router.get("/api/v1/dashboard/insight", response_model=InsightData)
+async def get_dashboard_insight() -> InsightData:
+    data = await get_insight_snapshot(include_modules=True)
+    return InsightData(**data)  # type: ignore[arg-type]
+
+
+async def record_request_metric(path: str, status_code: int, duration_ms: int) -> None:
+    if path.startswith("/ws"):
+        return
+    duration_ms = max(0, int(duration_ms))
+    _ = status_code  # placeholder for future status breakdowns
+    minute_bucket = datetime.now(timezone.utc).replace(second=0, microsecond=0)
+    async with state.lock:
+        if state.request_minutes and state.request_minutes[-1].minute == minute_bucket:
+            bucket = state.request_minutes[-1]
+        else:
+            bucket = _RequestMinute(minute=minute_bucket)
+            state.request_minutes.append(bucket)
+        bucket.count += 1
+        bucket.total_latency_ms += duration_ms
+        requests_payload = [rm.to_request_payload() for rm in list(state.request_minutes)[-30:]]
+        latency_payload = [rm.to_latency_payload() for rm in list(state.request_minutes)[-30:]]
+        updated_at = _now_iso()
+    try:
+        await _broadcast({
+            "type": "insight",
+            "insight": {
+                "requests_per_minute": requests_payload,
+                "latency_per_minute": latency_payload,
+                "updated_at": updated_at,
+            },
+        })
+    except Exception:
+        pass
+
+
+async def get_insight_snapshot(include_modules: bool = True) -> Dict[str, object]:
+    modules_payload: List[Dict[str, object]] = []
+    modules_summary = {"total": 0, "enabled": 0, "disabled": 0}
+    if include_modules:
+        modules_map = modules_core.list_modules()
+        modules_payload = [
+            {"name": name, "enabled": bool(enabled)}
+            for name, enabled in sorted(modules_map.items())
+        ]
+        enabled = sum(1 for _, flag in modules_map.items() if flag)
+        modules_summary = {
+            "total": len(modules_map),
+            "enabled": enabled,
+            "disabled": len(modules_map) - enabled,
+        }
+    async with state.lock:
+        requests_series = list(state.request_minutes)[-30:]
+        heatmap_series = list(state.similarity_heatmap)[-12:]
+    requests_payload = [rm.to_request_payload() for rm in requests_series]
+    latency_payload = [rm.to_latency_payload() for rm in requests_series]
+    heatmap_payload = [hb.to_payload() for hb in heatmap_series]
+    payload: Dict[str, object] = {
+        "requests_per_minute": requests_payload,
+        "latency_per_minute": latency_payload,
+        "similarity_heatmap": heatmap_payload,
+        "updated_at": _now_iso(),
+    }
+    if include_modules:
+        payload["modules"] = modules_payload
+        payload["modules_summary"] = modules_summary
+    return payload
+
+
 @router.websocket("/ws/metrics")
 async def ws_metrics(ws: WebSocket):
     await ws.accept()
@@ -252,13 +417,19 @@ async def ws_metrics(ws: WebSocket):
     try:
         # send snapshot on connect
         async with state.lock:
-            snapshot = {
-                "type": "snapshot",
-                "points": [p.model_dump() for p in state.points],
-                "tasks": state.tasks.model_dump(),
-                "reports": state.reports.model_dump(),
-                "ai": await get_ai_stats_raw(),
-            }
+            points = [p.model_dump() for p in state.points]
+            tasks = state.tasks.model_dump()
+            reports = state.reports.model_dump()
+        ai_stats = await get_ai_stats_raw()
+        insight = await get_insight_snapshot(include_modules=True)
+        snapshot = {
+            "type": "snapshot",
+            "points": points,
+            "tasks": tasks,
+            "reports": reports,
+            "ai": ai_stats,
+            "insight": insight,
+        }
         await ws.send_text(json.dumps(snapshot))
         # keep alive (no need to receive messages for now)
         while True:

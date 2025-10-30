@@ -98,11 +98,15 @@ async def add_request_context(request: Request, call_next):
     start = time.perf_counter()
     ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else "?")
     ua = request.headers.get("user-agent", "?")
+    status_code = 500
+    response = None
     try:
         response = await call_next(request)
+        status_code = getattr(response, "status_code", 200)
         return response
     except HTTPException as he:
         dur_ms = int((time.perf_counter() - start) * 1000)
+        status_code = he.status_code
         logger.warning(
             "HTTPException | id=%s | %s %s | status=%s | detail=%s | ip=%s | ua=%s | dur_ms=%s",
             request_id,
@@ -117,6 +121,7 @@ async def add_request_context(request: Request, call_next):
         raise
     except RequestValidationError as ve:
         dur_ms = int((time.perf_counter() - start) * 1000)
+        status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
         logger.warning(
             "ValidationError | id=%s | %s %s | status=422 | errors=%s | ip=%s | ua=%s | dur_ms=%s",
             request_id,
@@ -130,6 +135,7 @@ async def add_request_context(request: Request, call_next):
         raise
     except Exception:
         dur_ms = int((time.perf_counter() - start) * 1000)
+        status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         logger.exception(
             "Unhandled | id=%s | %s %s | ip=%s | ua=%s | dur_ms=%s",
             request_id,
@@ -140,6 +146,13 @@ async def add_request_context(request: Request, call_next):
             dur_ms,
         )
         raise
+    finally:
+        duration_ms = int((time.perf_counter() - start) * 1000)
+        path = request.url.path
+        try:
+            await dashboard.record_request_metric(path, status_code, duration_ms)
+        except Exception:
+            logging.getLogger(__name__).exception("Failed to record dashboard metric")
 
 
 @app.on_event("startup")
