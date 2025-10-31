@@ -11,6 +11,7 @@ import requests
 from fastapi import APIRouter, Header, HTTPException, Request, status
 
 from .config import settings
+from .resilience import resilient_request, CircuitOpenError
 from .notifications import send_telegram_message
 
 
@@ -102,15 +103,30 @@ async def _notify_telegram_done(info: Dict[str, Any], run_id: str) -> None:
         logging.getLogger(__name__).exception("Telegram notify failed")
 
 
-def _post_json(url: str, data: Dict[str, Any], run_id: str, timeout: int = 15) -> Optional[Dict[str, Any]]:
+def _post_json(url: str, data: Dict[str, Any], run_id: str, timeout: Optional[int] = None) -> Optional[Dict[str, Any]]:
     headers = {"Content-Type": "application/json", "X-Run-Id": run_id, "User-Agent": "AIHubWebhook/1.0"}
+    timeout_sec = float(timeout or settings.HTTP_TIMEOUT_SEC)
     try:
-        resp = requests.post(url, json=data, headers=headers, timeout=timeout)
+        resp = resilient_request(
+            "POST",
+            url,
+            timeout=timeout_sec,
+            retries=settings.HTTP_MAX_RETRIES,
+            backoff_base_ms=settings.HTTP_BACKOFF_BASE_MS,
+            circuit_key=f"post:{url}",
+            circuit_fail_threshold=settings.HTTP_CIRCUIT_FAIL_THRESHOLD,
+            circuit_reset_sec=settings.HTTP_CIRCUIT_RESET_SEC,
+            json=data,
+            headers=headers,
+        )
         resp.raise_for_status()
         try:
             return resp.json()
         except ValueError:
             return {"status": resp.status_code, "text": resp.text}
+    except CircuitOpenError:
+        log.warning("Circuit open for %s; skipping POST", url)
+        return None
     except Exception:
         log.exception("POST %s failed", url)
         return None
@@ -211,4 +227,3 @@ async def clickup_webhook(
         log.exception("start_next_task failed (run_id=%s)", run_id)
 
     return {"ok": True, "run_id": run_id, "next": next_resp or None}
-

@@ -10,6 +10,7 @@ from starlette.concurrency import run_in_threadpool
 
 from .config import settings
 from . import dashboard as dashboard_mod
+from .resilience import get_breaker
 
 try:
     from openai import OpenAI  # type: ignore
@@ -142,21 +143,55 @@ async def generate_ai_text(payload: AITextRequest, request: Request) -> AITextRe
 
         # Run the OpenAI call in a thread with a tight timeout to keep total < 2s
         start = time.perf_counter()
-        def _call():
-            return client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": system_msg},
-                    {"role": "user", "content": user_msg},
-                ],
-                temperature=0.2,
-                max_tokens=200,
-                response_format={"type": "json_object"},
-                timeout=max(0.5, settings.AI_TIMEOUT_MS / 1000 - 0.2),
-            )
 
-        # Await with budgeted time (e.g., 1.8s default)
-        completion = await run_in_threadpool(_call)
+        # Circuit breaker per-model to fast-fail when upstream is down
+        breaker = get_breaker(
+            key=f"openai:chat:{model}",
+            fail_threshold=settings.AI_CIRCUIT_FAIL_THRESHOLD,
+            reset_timeout=float(settings.AI_CIRCUIT_RESET_SEC),
+        )
+
+        # Remaining time budget across retries
+        total_budget = max(0.5, settings.AI_TIMEOUT_MS / 1000)
+        attempts = max(0, settings.AI_MAX_RETRIES) + 1
+        last_exc: Optional[BaseException] = None
+
+        for i in range(attempts):
+            if not breaker.allow_request():
+                raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="ai_circuit_open")
+
+            elapsed = time.perf_counter() - start
+            remaining = max(0.3, total_budget - elapsed)
+
+            def _call():
+                return client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": system_msg},
+                        {"role": "user", "content": user_msg},
+                    ],
+                    temperature=0.2,
+                    max_tokens=200,
+                    response_format={"type": "json_object"},
+                    timeout=remaining,
+                )
+
+            try:
+                # Enforce our own budgeted timeout guard as well
+                completion = await run_in_threadpool(_call)
+                breaker.record_success()
+                break
+            except Exception as e:
+                last_exc = e
+                breaker.record_failure()
+                if i < attempts - 1:
+                    # brief jittered backoff within remaining budget
+                    backoff = min(0.25 * (2 ** i), max(0.05, remaining / 3))
+                    import asyncio as _asyncio
+                    await _asyncio.sleep(backoff)
+                    continue
+                # out of retries
+                raise
         content = completion.choices[0].message.content or "{}"
         data = {}
         try:

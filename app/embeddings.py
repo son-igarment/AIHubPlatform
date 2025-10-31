@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from .config import settings
 from . import dashboard as dashboard_mod
+from .resilience import get_breaker
 
 try:
     from openai import OpenAI  # type: ignore
@@ -113,10 +114,26 @@ def compute_embedding(text: str) -> List[float]:
         dim = min(384, settings.EMBEDDING_DIM or 384)
         return _local_embedding(text, dim)
     try:
-        res = client.embeddings.create(model=settings.EMBEDDING_MODEL, input=text)
+        breaker = get_breaker(
+            key=f"openai:embeddings:{settings.EMBEDDING_MODEL}",
+            fail_threshold=settings.AI_CIRCUIT_FAIL_THRESHOLD,
+            reset_timeout=float(settings.AI_CIRCUIT_RESET_SEC),
+        )
+        if not breaker.allow_request():
+            raise RuntimeError("embeddings_circuit_open")
+        res = client.embeddings.create(
+            model=settings.EMBEDDING_MODEL,
+            input=text,
+            timeout=max(0.5, settings.AI_TIMEOUT_MS / 1000 - 0.2),
+        )
+        breaker.record_success()
         return list(res.data[0].embedding)
     except Exception:
         # Fallback local on any API error
+        try:
+            breaker.record_failure()  # type: ignore[name-defined]
+        except Exception:
+            pass
         dim = min(384, settings.EMBEDDING_DIM or 384)
         return _local_embedding(text, dim)
 

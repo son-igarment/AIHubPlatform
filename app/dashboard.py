@@ -10,9 +10,16 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
 from . import modules as modules_core
+from .config import settings
 
 
 router = APIRouter()
+
+# Simple in-memory TTL caches for metrics endpoints (reduce load under spikes)
+_ai_stats_cache: Dict[str, object] = {"ts": 0.0, "val": None}
+_ai_history_cache: Dict[str, object] = {"ts": 0.0, "args": None, "val": None}
+_metrics_history_cache: Dict[str, object] = {"ts": 0.0, "args": None, "val": None}
+_insight_cache: Dict[str, object] = {"ts": 0.0, "val": None}
 
 
 def _now_iso() -> str:
@@ -307,19 +314,31 @@ async def get_ai_stats_raw() -> Dict[str, object]:
 
 @router.get("/api/v1/ai/stats", response_model=AIStats)
 async def get_ai_stats() -> AIStats:
+    ttl = max(1, int(settings.METRICS_CACHE_TTL_SECONDS))
+    now = asyncio.get_event_loop().time()
+    if _ai_stats_cache["val"] is not None and (now - float(_ai_stats_cache.get("ts", 0.0))) <= ttl:
+        return AIStats(**(_ai_stats_cache["val"]))  # type: ignore[arg-type]
     data = await get_ai_stats_raw()
+    _ai_stats_cache.update({"ts": now, "val": data})
     return AIStats(**data)  # type: ignore[arg-type]
 
 
 @router.get("/api/v1/ai/history")
 async def get_ai_history(limit: int = 120) -> Dict[str, object]:
+    ttl = max(1, int(settings.METRICS_CACHE_TTL_SECONDS))
+    now = asyncio.get_event_loop().time()
+    if (
+        _ai_history_cache["val"] is not None
+        and _ai_history_cache.get("args") == limit
+        and (now - float(_ai_history_cache.get("ts", 0.0))) <= ttl
+    ):
+        return _ai_history_cache["val"]  # type: ignore[return-value]
     async with state.lock:
         lat = list(state.ai_latencies)[-max(1, min(limit, state.ai_latencies.maxlen or 120)) :]
         sims = list(state.ai_similarity_samples)[-max(1, min(limit, state.ai_similarity_samples.maxlen or 120)) :]
-        return {
-            "latencies": [p.model_dump() for p in lat],
-            "similarities": sims,
-        }
+        out = {"latencies": [p.model_dump() for p in lat], "similarities": sims}
+    _ai_history_cache.update({"ts": now, "args": limit, "val": out})
+    return out
 
 
 @router.get("/api/v1/tasks/summary", response_model=TaskSummary)
@@ -336,14 +355,29 @@ async def get_report_summary() -> ReportSummary:
 
 @router.get("/api/v1/metrics/history")
 async def get_metric_history(limit: int = 120) -> Dict[str, List[MetricPoint]]:
+    ttl = max(1, int(settings.METRICS_CACHE_TTL_SECONDS))
+    now = asyncio.get_event_loop().time()
+    if (
+        _metrics_history_cache["val"] is not None
+        and _metrics_history_cache.get("args") == limit
+        and (now - float(_metrics_history_cache.get("ts", 0.0))) <= ttl
+    ):
+        return _metrics_history_cache["val"]  # type: ignore[return-value]
     async with state.lock:
         data = list(state.points)[-max(1, min(limit, state.max_points)) :]
-        return {"points": [p.model_dump() for p in data]}
+        out = {"points": [p.model_dump() for p in data]}
+    _metrics_history_cache.update({"ts": now, "args": limit, "val": out})
+    return out
 
 
 @router.get("/api/v1/dashboard/insight", response_model=InsightData)
 async def get_dashboard_insight() -> InsightData:
+    ttl = max(1, int(settings.METRICS_CACHE_TTL_SECONDS))
+    now = asyncio.get_event_loop().time()
+    if _insight_cache["val"] is not None and (now - float(_insight_cache.get("ts", 0.0))) <= ttl:
+        return InsightData(**(_insight_cache["val"]))  # type: ignore[arg-type]
     data = await get_insight_snapshot(include_modules=True)
+    _insight_cache.update({"ts": now, "val": data})
     return InsightData(**data)  # type: ignore[arg-type]
 
 

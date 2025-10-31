@@ -64,6 +64,21 @@ class Settings:
     TELEGRAM_DISABLE_NOTIFICATIONS: bool = os.getenv("TELEGRAM_DISABLE_NOTIFICATIONS", "false").lower() == "true"
     TELEGRAM_TIMEOUT: int = int(os.getenv("TELEGRAM_TIMEOUT", "15"))
 
+    # Resilience / HTTP hardening
+    HTTP_TIMEOUT_SEC: int = int(os.getenv("HTTP_TIMEOUT_SEC", "8"))
+    HTTP_MAX_RETRIES: int = int(os.getenv("HTTP_MAX_RETRIES", "2"))
+    HTTP_BACKOFF_BASE_MS: int = int(os.getenv("HTTP_BACKOFF_BASE_MS", "120"))
+    HTTP_CIRCUIT_FAIL_THRESHOLD: int = int(os.getenv("HTTP_CIRCUIT_FAIL_THRESHOLD", "5"))
+    HTTP_CIRCUIT_RESET_SEC: int = int(os.getenv("HTTP_CIRCUIT_RESET_SEC", "30"))
+
+    # AI circuit breaker + retries
+    AI_MAX_RETRIES: int = int(os.getenv("AI_MAX_RETRIES", "1"))
+    AI_CIRCUIT_FAIL_THRESHOLD: int = int(os.getenv("AI_CIRCUIT_FAIL_THRESHOLD", "3"))
+    AI_CIRCUIT_RESET_SEC: int = int(os.getenv("AI_CIRCUIT_RESET_SEC", "20"))
+
+    # Metrics cache TTL
+    METRICS_CACHE_TTL_SECONDS: int = int(os.getenv("METRICS_CACHE_TTL_SECONDS", "60"))
+
     @property
     def access_expires(self) -> timedelta:
         return timedelta(minutes=self.ACCESS_TOKEN_EXPIRE_MINUTES)

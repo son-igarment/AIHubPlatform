@@ -11,6 +11,8 @@ from apscheduler.triggers.interval import IntervalTrigger
 
 from .config import settings
 from . import embeddings as emb
+from .resilience import resilient_request, CircuitOpenError
+from .notifications import send_telegram_message
 
 
 logger = logging.getLogger("automation")
@@ -324,7 +326,6 @@ class AutomationScheduler:
             logger.debug("Telegram credentials missing; notification skipped.")
             return
 
-        # Add record counts to Telegram message if available
         rows_changed = None
         processed = None
         if isinstance(result.update_summary, dict):
@@ -335,22 +336,8 @@ class AutomationScheduler:
             extra = f"\nRecords: rows_changed={rows_changed} processed={processed}"
         message = result.to_message() + extra
 
-        def _send() -> None:
-            url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage"
-            payload: Dict[str, Any] = {
-                "chat_id": settings.TELEGRAM_CHAT_ID,
-                "text": message,
-                "disable_notification": settings.TELEGRAM_DISABLE_NOTIFICATIONS,
-                "parse_mode": settings.TELEGRAM_PARSE_MODE,
-            }
-            if settings.TELEGRAM_THREAD_ID:
-                payload["message_thread_id"] = settings.TELEGRAM_THREAD_ID
-
-            resp = requests.post(url, json=payload, timeout=settings.TELEGRAM_TIMEOUT)
-            resp.raise_for_status()
-
         try:
-            await asyncio.to_thread(_send)
+            await send_telegram_message(message)
             logger.info("Telegram notification sent.")
         except Exception as exc:  # pylint: disable=broad-except
             logger.exception("Failed to send Telegram notification: %s", exc)
@@ -364,20 +351,33 @@ class AutomationScheduler:
         else:
             kwargs["json"] = payload
 
-        resp = requests.request(method_upper, url, **kwargs)
-        resp.raise_for_status()
+        try:
+            resp = resilient_request(
+                method_upper,
+                url,
+                timeout=float(settings.AI_HTTP_TIMEOUT),
+                retries=settings.HTTP_MAX_RETRIES,
+                backoff_base_ms=settings.HTTP_BACKOFF_BASE_MS,
+                circuit_key=f"automation:{method_upper}:{url}",
+                circuit_fail_threshold=settings.HTTP_CIRCUIT_FAIL_THRESHOLD,
+                circuit_reset_sec=settings.HTTP_CIRCUIT_RESET_SEC,
+                **kwargs,
+            )
+            resp.raise_for_status()
+        except CircuitOpenError:
+            return {
+                "endpoint": url,
+                "method": method_upper,
+                "status_code": 503,
+                "data": {"error": "circuit_open"},
+            }
 
         try:
             data = resp.json()
         except ValueError:
             data = {"raw": resp.text}
 
-        return {
-            "endpoint": url,
-            "method": method_upper,
-            "status_code": resp.status_code,
-            "data": data,
-        }
+        return {"endpoint": url, "method": method_upper, "status_code": resp.status_code, "data": data}
 
     def _build_request_headers(self) -> Dict[str, str]:
         headers = {"User-Agent": "AIHubAutomation/1.0"}
