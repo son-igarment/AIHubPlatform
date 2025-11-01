@@ -4,12 +4,13 @@ import random
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Deque, Dict, List, Optional
+from typing import Any, Deque, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
 from . import modules as modules_core
+from .security import get_demo_password_hint, get_user_statistics
 from .config import settings
 
 
@@ -89,12 +90,29 @@ class HeatmapSlot(BaseModel):
     bins: List[int]
 
 
+class UserSummary(BaseModel):
+    total: int
+    admin: int
+    dev: int
+
+
+class SimilarityQueryItem(BaseModel):
+    ts: str
+    query: str
+    score: float
+    doc_id: Optional[str] = None
+    doc_title: Optional[str] = None
+
+
 class InsightData(BaseModel):
     modules: List[ModuleState]
     modules_summary: ModulesSummary
     requests_per_minute: List[RequestPerMinute]
     latency_per_minute: List[LatencyPerMinute]
     similarity_heatmap: List[HeatmapSlot]
+    user_summary: UserSummary
+    top_similarity_queries: List[SimilarityQueryItem]
+    demo_password_hint: str
     updated_at: str
 
 
@@ -135,6 +153,24 @@ class _HeatBucket:
             "bins": list(self.bins),
         }
 
+
+@dataclass
+class _SimilarityQuery:
+    ts: datetime
+    query: str
+    score: float
+    doc_id: Optional[str]
+    doc_title: Optional[str]
+
+    def to_payload(self) -> Dict[str, object]:
+        return {
+            "ts": self.ts.isoformat(),
+            "query": self.query,
+            "score": round(self.score, 4),
+            "doc_id": self.doc_id,
+            "doc_title": self.doc_title,
+        }
+
 @dataclass
 class _State:
     # metrics
@@ -149,6 +185,7 @@ class _State:
     ai_latencies: Deque[AILatencyPoint]
     request_minutes: Deque[_RequestMinute]
     similarity_heatmap: Deque[_HeatBucket]
+    similarity_queries: Deque[_SimilarityQuery]
     # concurrency
     lock: asyncio.Lock
     # websocket clients
@@ -167,6 +204,7 @@ state = _State(
     ai_latencies=deque(maxlen=400),
     request_minutes=deque(maxlen=120),
     similarity_heatmap=deque(maxlen=48),
+    similarity_queries=deque(maxlen=50),
     lock=asyncio.Lock(),
     clients=[],
     running=False,
@@ -285,6 +323,46 @@ async def record_similarity(score: float) -> None:
             "type": "insight",
             "insight": {
                 "similarity_heatmap": heatmap_payload,
+                "updated_at": updated_at,
+            },
+        })
+    except Exception:
+        pass
+
+
+async def record_similarity_query(
+    query: str,
+    results: List[Tuple[float, str, str, Optional[Dict[str, Any]]]],
+) -> None:
+    query_text = query.strip()
+    top_score = 0.0
+    top_doc = None
+    doc_title = None
+    if results:
+        best = results[0]
+        top_score = float(best[0])
+        top_doc = best[1]
+        meta = best[3] or {}
+        if isinstance(meta, dict) and meta.get("title"):
+            doc_title = str(meta.get("title"))
+        elif best[2]:
+            doc_title = str(best[2])[:80]
+    async with state.lock:
+        record = _SimilarityQuery(
+            ts=datetime.now(timezone.utc),
+            query=query_text,
+            score=max(0.0, min(1.0, top_score)),
+            doc_id=top_doc,
+            doc_title=doc_title,
+        )
+        state.similarity_queries.append(record)
+        top_payload = [item.to_payload() for item in list(state.similarity_queries)[-10:]]
+        updated_at = _now_iso()
+    try:
+        await _broadcast({
+            "type": "insight",
+            "insight": {
+                "top_similarity_queries": top_payload,
                 "updated_at": updated_at,
             },
         })
@@ -414,6 +492,8 @@ async def record_request_metric(path: str, status_code: int, duration_ms: int) -
 async def get_insight_snapshot(include_modules: bool = True) -> Dict[str, object]:
     modules_payload: List[Dict[str, object]] = []
     modules_summary = {"total": 0, "enabled": 0, "disabled": 0}
+    user_summary = get_user_statistics()
+    password_hint = get_demo_password_hint()
     if include_modules:
         modules_map = modules_core.list_modules()
         modules_payload = [
@@ -429,13 +509,18 @@ async def get_insight_snapshot(include_modules: bool = True) -> Dict[str, object
     async with state.lock:
         requests_series = list(state.request_minutes)[-30:]
         heatmap_series = list(state.similarity_heatmap)[-12:]
+        queries_series = list(state.similarity_queries)[-10:]
     requests_payload = [rm.to_request_payload() for rm in requests_series]
     latency_payload = [rm.to_latency_payload() for rm in requests_series]
     heatmap_payload = [hb.to_payload() for hb in heatmap_series]
+    top_queries_payload = [q.to_payload() for q in queries_series]
     payload: Dict[str, object] = {
         "requests_per_minute": requests_payload,
         "latency_per_minute": latency_payload,
         "similarity_heatmap": heatmap_payload,
+        "user_summary": user_summary,
+        "top_similarity_queries": top_queries_payload,
+        "demo_password_hint": password_hint,
         "updated_at": _now_iso(),
     }
     if include_modules:

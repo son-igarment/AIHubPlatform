@@ -1,0 +1,7 @@
+{
+  "analytics": true,
+  "auth": true,
+  "crawl": true,
+  "generator": true,
+  "scheduler": true
+}

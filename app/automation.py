@@ -13,6 +13,7 @@ from .config import settings
 from . import embeddings as emb
 from .resilience import resilient_request, CircuitOpenError
 from .notifications import send_telegram_message
+from .storage import append_json_log, acquire_job_lock, release_job_lock
 
 
 logger = logging.getLogger("automation")
@@ -54,6 +55,7 @@ class AutomationResult:
     origin: str
     crawl_summary: Dict[str, Any] = field(default_factory=dict)
     update_summary: Dict[str, Any] = field(default_factory=dict)
+    report_summary: Dict[str, Any] = field(default_factory=dict)
     error: Optional[str] = None
 
     @property
@@ -73,6 +75,8 @@ class AutomationResult:
             lines.append(f"Crawl: {_summarize_dict(self.crawl_summary)}")
         if self.update_summary:
             lines.append(f"Update: {_summarize_dict(self.update_summary)}")
+        if self.report_summary:
+            lines.append(f"Report: {_summarize_dict(self.report_summary)}")
         if self.error:
             lines.append(f"Error: {self.error}")
         return "\n".join(lines)
@@ -138,61 +142,80 @@ class AutomationScheduler:
             return None
 
         async with self._lock:
-            started = _utcnow()
-            crawl_summary: Dict[str, Any] = {}
-            update_summary: Dict[str, Any] = {}
-            error: Optional[str] = None
-            status = "success"
-
-            logger.info("Automation job started (%s).", origin)
+            lock_key = "automation:job_lock"
+            lock_acquired = await acquire_job_lock(lock_key, ttl=330)
+            if not lock_acquired:
+                logger.info("Automation job skipped; lock already held (origin=%s)", origin)
+                return None
             try:
-                crawl_summary = await self._crawl_data()
-                update_summary = await self._update_data(crawl_summary)
-            except Exception as exc:  # pylint: disable=broad-except
-                status = "failure"
-                error = str(exc)
-                logger.exception("Automation job failed: %s", exc)
+                started = _utcnow()
+                crawl_summary: Dict[str, Any] = {}
+                update_summary: Dict[str, Any] = {}
+                report_summary: Dict[str, Any] = {}
+                error: Optional[str] = None
+                status = "success"
 
-            finished = _utcnow()
-            result = AutomationResult(
-                status=status,
-                started_at=started,
-                finished_at=finished,
-                origin=origin,
-                crawl_summary=crawl_summary,
-                update_summary=update_summary,
-                error=error,
-            )
-            self._last_result = result
-            await self._notify_telegram(result)
-            # Emit a valid JSON line with job summary (v3)
-            try:
-                logger.info(
-                    json.dumps(
-                        {
-                            "version": "scheduler_v3",
-                            "status": status,
-                            "origin": origin,
-                            "started_at": started.isoformat(),
-                            "finished_at": finished.isoformat(),
-                            "duration_seconds": result.duration_seconds,
-                            "crawl": crawl_summary,
-                            "update": update_summary,
-                        },
-                        ensure_ascii=False,
-                        default=str,
-                        sort_keys=True,
-                    )
+                logger.info("Automation job started (%s).", origin)
+                self._seen_doc_ids.clear()
+                try:
+                    crawl_summary = await self._crawl_data()
+                    await self._notify_job_step("crawl_keywords", crawl_summary)
+                    update_summary = await self._update_data(crawl_summary)
+                    await self._notify_job_step("update_embeddings", update_summary)
+                except Exception as exc:  # pylint: disable=broad-except
+                    status = "failure"
+                    error = str(exc)
+                    logger.exception("Automation job failed: %s", exc)
+
+                finished = _utcnow()
+                result = AutomationResult(
+                    status=status,
+                    started_at=started,
+                    finished_at=finished,
+                    origin=origin,
+                    crawl_summary=crawl_summary,
+                    update_summary=update_summary,
+                    report_summary={},
+                    error=error,
                 )
-            except Exception:
-                logger.exception("Failed to emit JSON job log")
-            logger.info(
-                "Automation job finished (%s) status=%s duration=%.2fs",
-                origin,
-                status,
-                result.duration_seconds,
-            )
-            return result
+
+                try:
+                    report_summary = await self._report_to_telegram(result)
+                except Exception as exc:  # pragma: no cover - notification failure
+                    logger.exception("Failed to report automation result: %s", exc)
+                    if status == "success":
+                        status = "failure"
+                        result.status = status
+                        error = error or str(exc)
+                    report_summary = {"status": "failed", "error": str(exc)}
+
+                result.report_summary = report_summary
+                result.error = error
+                self._last_result = result
+                await self._notify_job_step("report_to_tg", report_summary)
+
+                log_record = {
+                    "version": "scheduler_v3",
+                    "status": result.status,
+                    "origin": origin,
+                    "started_at": started.isoformat(),
+                    "finished_at": finished.isoformat(),
+                    "duration_seconds": result.duration_seconds,
+                    "crawl": crawl_summary,
+                    "update": update_summary,
+                    "report": report_summary,
+                    "error": error,
+                }
+                append_json_log(log_record)
+                logger.info(
+                    "Automation job finished (%s) status=%s duration=%.2fs",
+                    origin,
+                    result.status,
+                    result.duration_seconds,
+                )
+                return result
+            finally:
+                await release_job_lock(lock_key)
 
     async def _schedule_wrapper(self) -> None:
         await self.run_now(origin="scheduler")
@@ -321,26 +344,42 @@ class AutomationScheduler:
         logger.info("v3 update summary: %s", _summarize_dict(summary))
         return summary
 
-    async def _notify_telegram(self, result: AutomationResult) -> None:
+    async def _report_to_telegram(self, result: AutomationResult) -> Dict[str, Any]:
+        summary: Dict[str, Any] = {
+            "status": "skipped",
+            "rows_changed": None,
+            "processed": None,
+        }
+        if isinstance(result.update_summary, dict):
+            summary["rows_changed"] = result.update_summary.get("rows_changed")
+            summary["processed"] = result.update_summary.get("processed")
+
         if not settings.TELEGRAM_BOT_TOKEN or not settings.TELEGRAM_CHAT_ID:
             logger.debug("Telegram credentials missing; notification skipped.")
-            return
+            result.report_summary = summary
+            return summary
 
-        rows_changed = None
-        processed = None
-        if isinstance(result.update_summary, dict):
-            rows_changed = result.update_summary.get("rows_changed")
-            processed = result.update_summary.get("processed")
         extra = ""
-        if isinstance(rows_changed, int) and isinstance(processed, int):
-            extra = f"\nRecords: rows_changed={rows_changed} processed={processed}"
+        if isinstance(summary["rows_changed"], int) and isinstance(summary["processed"], int):
+            extra = f"\nRecords: rows_changed={summary['rows_changed']} processed={summary['processed']}"
+
+        # Update result before composing message so to_message() contains report data
+        result.report_summary = summary
         message = result.to_message() + extra
 
         try:
             await send_telegram_message(message)
             logger.info("Telegram notification sent.")
+            summary["status"] = "sent"
         except Exception as exc:  # pylint: disable=broad-except
+            summary["status"] = "failed"
+            summary["error"] = str(exc)
             logger.exception("Failed to send Telegram notification: %s", exc)
+            result.status = "failure"
+            if not result.error:
+                result.error = str(exc)
+        result.report_summary = summary
+        return summary
 
     def _perform_request(self, url: str, method: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         method_upper = method.upper()
@@ -400,6 +439,26 @@ class AutomationScheduler:
         for i in range(max(0, cycles)):
             await self.run_now(origin=f"simulation#{i+1}")
             await asyncio.sleep(max(0.0, settings.AUTOMATION_SIMULATE_DELAY_SEC))
+
+    async def _notify_job_step(self, job: str, summary: Dict[str, Any]) -> None:
+        """Send Telegram notification for a specific job step when configured."""
+        if not settings.TELEGRAM_BOT_TOKEN or not settings.TELEGRAM_CHAT_ID:
+            return
+        try:
+            affected = None
+            for key in ("rows_changed", "processed", "removed", "inserted", "updated"):
+                val = summary.get(key)
+                if isinstance(val, int):
+                    affected = val
+                    break
+            detail = _summarize_dict(summary, limit=280)
+            message = f"🔁 Job `{job}` completed\n{detail}"
+            if affected is not None:
+                message += f"\nRecords affected: {affected}"
+            await send_telegram_message(message)
+        except Exception:
+            logger.exception("Failed to notify Telegram for job %s", job)
+
 
 
 automation_scheduler = AutomationScheduler()

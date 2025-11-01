@@ -20,6 +20,12 @@ class Settings:
     ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "15"))
     REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
+    OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
+    TELEGRAM_BOT_TOKEN: Optional[str] = os.getenv("TELEGRAM_BOT_TOKEN")
+    TELEGRAM_CHAT_ID: Optional[str] = os.getenv("TELEGRAM_CHAT_ID")
+    CLICKUP_WEBHOOK_SECRET: Optional[str] = os.getenv("CLICKUP_WEBHOOK_SECRET")
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "")
+    REDIS_URL: Optional[str] = os.getenv("REDIS_URL")
 
     # Logging
     LOG_DIR: Path = Path(os.getenv("LOG_DIR", ROOT_DIR / "logs"))
@@ -45,7 +51,6 @@ class Settings:
     AI_EXTRA_HEADERS: Optional[str] = os.getenv("AI_EXTRA_HEADERS")
 
     # AI generation defaults
-    OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
     AI_MODEL: str = os.getenv("AI_MODEL", "gpt-4o-mini")
     AI_TIMEOUT_MS: int = int(os.getenv("AI_TIMEOUT_MS", "1800"))
     AI_CACHE_TTL_SECONDS: int = int(os.getenv("AI_CACHE_TTL_SECONDS", "600"))
@@ -57,8 +62,6 @@ class Settings:
     EMBEDDING_DIM: int = int(os.getenv("EMBEDDING_DIM", "384"))
 
     # Telegram notifications
-    TELEGRAM_BOT_TOKEN: Optional[str] = os.getenv("TELEGRAM_BOT_TOKEN")
-    TELEGRAM_CHAT_ID: Optional[str] = os.getenv("TELEGRAM_CHAT_ID")
     TELEGRAM_THREAD_ID: Optional[str] = os.getenv("TELEGRAM_THREAD_ID")
     TELEGRAM_PARSE_MODE: str = os.getenv("TELEGRAM_PARSE_MODE", "Markdown")
     TELEGRAM_DISABLE_NOTIFICATIONS: bool = os.getenv("TELEGRAM_DISABLE_NOTIFICATIONS", "false").lower() == "true"
@@ -87,6 +90,19 @@ class Settings:
     def refresh_expires(self) -> timedelta:
         return timedelta(days=self.REFRESH_TOKEN_EXPIRE_DAYS)
 
+    def validate_required(self) -> None:
+        required_map = {
+            "OPENAI_API_KEY": self.OPENAI_API_KEY,
+            "TELEGRAM_BOT_TOKEN": self.TELEGRAM_BOT_TOKEN,
+            "TELEGRAM_CHAT_ID": self.TELEGRAM_CHAT_ID,
+            "CLICKUP_WEBHOOK_SECRET": self.CLICKUP_WEBHOOK_SECRET,
+            "DATABASE_URL": self.DATABASE_URL,
+        }
+        missing = [key for key, value in required_map.items() if value is None or str(value).strip() == ""]
+        if missing:
+            raise RuntimeError(f"Missing required environment variables: {', '.join(missing)}")
+
 
 settings = Settings()
+settings.validate_required()
 settings.LOG_DIR.mkdir(parents=True, exist_ok=True)

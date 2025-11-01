@@ -330,6 +330,7 @@ async def search_embeddings(payload: SearchRequest) -> SearchResponse:
     try:
         if top:
             await dashboard_mod.record_similarity(float(top[0][0]))
+            await dashboard_mod.record_similarity_query(payload.query, top)
     except Exception:
         pass
     return resp
@@ -366,6 +367,7 @@ async def search_knowledge(payload: SearchKnowledgeRequest) -> SearchKnowledgeRe
     try:
         if top:
             await dashboard_mod.record_similarity(float(top[0][0]))
+            await dashboard_mod.record_similarity_query(payload.query, top)
     except Exception:
         pass
     return resp

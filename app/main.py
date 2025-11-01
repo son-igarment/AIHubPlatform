@@ -15,6 +15,7 @@ from .config import settings
 from . import dashboard
 from . import modules as modules_core
 from .automation import automation_scheduler
+from .storage import init_persistence
 from .models import LoginRequest, TokenPair, RefreshRequest, UserPublic
 from .security import (
     authenticate,
@@ -35,6 +36,7 @@ def setup_logging(log_dir: Path, level: str = "INFO") -> None:
     auth_file = log_dir / "auth.log"
     ai_file = log_dir / "ai.log"
     modules_file = log_dir / "modules_toggles.log"
+    automation_file = log_dir / "automation_logs.log"
     root_logger = logging.getLogger()
     root_logger.setLevel(getattr(logging, level.upper(), logging.INFO))
 
@@ -77,9 +79,16 @@ def setup_logging(log_dir: Path, level: str = "INFO") -> None:
         mh.setFormatter(fmt)
         modules_logger.addHandler(mh)
 
+    automation_logger = logging.getLogger("automation.flow")
+    if not any(isinstance(h, RotatingFileHandler) and getattr(h, 'baseFilename', '') == str(automation_file) for h in automation_logger.handlers):
+        autoh = RotatingFileHandler(automation_file, maxBytes=2 * 1024 * 1024, backupCount=3, encoding="utf-8")
+        autoh.setFormatter(fmt)
+        automation_logger.addHandler(autoh)
+
 
 app = FastAPI(title=settings.APP_NAME, version="1.0.0")
 setup_logging(settings.LOG_DIR, settings.LOG_LEVEL)
+init_persistence()
 logger = logging.getLogger("auth")
 
 app.add_middleware(

@@ -1,0 +1,1413 @@
+{
+  "default_password": "Demo@123",
+  "users": [
+    {
+      "email": "admin@example.com",
+      "full_name": "Admin User",
+      "role": "Admin",
+      "team": "Core Backend",
+      "region": "Hanoi"
+    },
+    {
+      "email": "dev@example.com",
+      "full_name": "Dev User",
+      "role": "Dev",
+      "team": "Automation",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "annguyen1@demo.aihub.vn",
+      "full_name": "Nguyen Thi An",
+      "role": "Admin",
+      "team": "Data Platform",
+      "region": "Hanoi"
+    },
+    {
+      "email": "binhnguyen2@demo.aihub.vn",
+      "full_name": "Nguyen Thi Binh",
+      "role": "Admin",
+      "team": "AI Research",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "chaunguyen3@demo.aihub.vn",
+      "full_name": "Nguyen Thi Chau",
+      "role": "Admin",
+      "team": "Automation",
+      "region": "Danang"
+    },
+    {
+      "email": "dungnguyen4@demo.aihub.vn",
+      "full_name": "Nguyen Thi Dung",
+      "role": "Admin",
+      "team": "QA Guild",
+      "region": "Hue"
+    },
+    {
+      "email": "giangnguyen5@demo.aihub.vn",
+      "full_name": "Nguyen Thi Giang",
+      "role": "Admin",
+      "team": "Security",
+      "region": "CanTho"
+    },
+    {
+      "email": "hanguyen6@demo.aihub.vn",
+      "full_name": "Nguyen Thi Ha",
+      "role": "Admin",
+      "team": "Core Backend",
+      "region": "Hanoi"
+    },
+    {
+      "email": "hanhnguyen7@demo.aihub.vn",
+      "full_name": "Nguyen Thi Hanh",
+      "role": "Admin",
+      "team": "Integration",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "hieunguyen8@demo.aihub.vn",
+      "full_name": "Nguyen Thi Hieu",
+      "role": "Admin",
+      "team": "MLOps",
+      "region": "Danang"
+    },
+    {
+      "email": "hoanguyen9@demo.aihub.vn",
+      "full_name": "Nguyen Thi Hoa",
+      "role": "Admin",
+      "team": "Partnership",
+      "region": "Hue"
+    },
+    {
+      "email": "hungnguyen10@demo.aihub.vn",
+      "full_name": "Nguyen Thi Hung",
+      "role": "Admin",
+      "team": "R&D",
+      "region": "CanTho"
+    },
+    {
+      "email": "huynguyen11@demo.aihub.vn",
+      "full_name": "Nguyen Thi Huy",
+      "role": "Admin",
+      "team": "Data Platform",
+      "region": "Hanoi"
+    },
+    {
+      "email": "khanhnguyen12@demo.aihub.vn",
+      "full_name": "Nguyen Thi Khanh",
+      "role": "Admin",
+      "team": "AI Research",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "lamnguyen13@demo.aihub.vn",
+      "full_name": "Nguyen Thi Lam",
+      "role": "Admin",
+      "team": "Automation",
+      "region": "Danang"
+    },
+    {
+      "email": "linhnguyen14@demo.aihub.vn",
+      "full_name": "Nguyen Thi Linh",
+      "role": "Admin",
+      "team": "QA Guild",
+      "region": "Hue"
+    },
+    {
+      "email": "longnguyen15@demo.aihub.vn",
+      "full_name": "Nguyen Thi Long",
+      "role": "Admin",
+      "team": "Security",
+      "region": "CanTho"
+    },
+    {
+      "email": "mynguyen16@demo.aihub.vn",
+      "full_name": "Nguyen Thi My",
+      "role": "Admin",
+      "team": "Core Backend",
+      "region": "Hanoi"
+    },
+    {
+      "email": "namnguyen17@demo.aihub.vn",
+      "full_name": "Nguyen Thi Nam",
+      "role": "Admin",
+      "team": "Integration",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "nghianguyen18@demo.aihub.vn",
+      "full_name": "Nguyen Thi Nghia",
+      "role": "Admin",
+      "team": "MLOps",
+      "region": "Danang"
+    },
+    {
+      "email": "phongnguyen19@demo.aihub.vn",
+      "full_name": "Nguyen Thi Phong",
+      "role": "Admin",
+      "team": "Partnership",
+      "region": "Hue"
+    },
+    {
+      "email": "phucnguyen20@demo.aihub.vn",
+      "full_name": "Nguyen Thi Phuc",
+      "role": "Admin",
+      "team": "R&D",
+      "region": "CanTho"
+    },
+    {
+      "email": "quyennguyen21@demo.aihub.vn",
+      "full_name": "Nguyen Thi Quyen",
+      "role": "Admin",
+      "team": "Data Platform",
+      "region": "Hanoi"
+    },
+    {
+      "email": "sangnguyen22@demo.aihub.vn",
+      "full_name": "Nguyen Thi Sang",
+      "role": "Admin",
+      "team": "AI Research",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "sonnguyen23@demo.aihub.vn",
+      "full_name": "Nguyen Thi Son",
+      "role": "Admin",
+      "team": "Automation",
+      "region": "Danang"
+    },
+    {
+      "email": "tamnguyen24@demo.aihub.vn",
+      "full_name": "Nguyen Thi Tam",
+      "role": "Admin",
+      "team": "QA Guild",
+      "region": "Hue"
+    },
+    {
+      "email": "tannguyen25@demo.aihub.vn",
+      "full_name": "Nguyen Thi Tan",
+      "role": "Dev",
+      "team": "Security",
+      "region": "CanTho"
+    },
+    {
+      "email": "thaonguyen26@demo.aihub.vn",
+      "full_name": "Nguyen Thi Thao",
+      "role": "Dev",
+      "team": "Core Backend",
+      "region": "Hanoi"
+    },
+    {
+      "email": "thiennguyen27@demo.aihub.vn",
+      "full_name": "Nguyen Thi Thien",
+      "role": "Dev",
+      "team": "Integration",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "thunguyen28@demo.aihub.vn",
+      "full_name": "Nguyen Thi Thu",
+      "role": "Dev",
+      "team": "MLOps",
+      "region": "Danang"
+    },
+    {
+      "email": "thynguyen29@demo.aihub.vn",
+      "full_name": "Nguyen Thi Thy",
+      "role": "Dev",
+      "team": "Partnership",
+      "region": "Hue"
+    },
+    {
+      "email": "toannguyen30@demo.aihub.vn",
+      "full_name": "Nguyen Thi Toan",
+      "role": "Dev",
+      "team": "R&D",
+      "region": "CanTho"
+    },
+    {
+      "email": "trangnguyen31@demo.aihub.vn",
+      "full_name": "Nguyen Thi Trang",
+      "role": "Dev",
+      "team": "Data Platform",
+      "region": "Hanoi"
+    },
+    {
+      "email": "trungnguyen32@demo.aihub.vn",
+      "full_name": "Nguyen Thi Trung",
+      "role": "Dev",
+      "team": "AI Research",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "tuannguyen33@demo.aihub.vn",
+      "full_name": "Nguyen Thi Tuan",
+      "role": "Dev",
+      "team": "Automation",
+      "region": "Danang"
+    },
+    {
+      "email": "tungnguyen34@demo.aihub.vn",
+      "full_name": "Nguyen Thi Tung",
+      "role": "Dev",
+      "team": "QA Guild",
+      "region": "Hue"
+    },
+    {
+      "email": "uynguyen35@demo.aihub.vn",
+      "full_name": "Nguyen Thi Uy",
+      "role": "Dev",
+      "team": "Security",
+      "region": "CanTho"
+    },
+    {
+      "email": "vannguyen36@demo.aihub.vn",
+      "full_name": "Nguyen Thi Van",
+      "role": "Dev",
+      "team": "Core Backend",
+      "region": "Hanoi"
+    },
+    {
+      "email": "vynguyen37@demo.aihub.vn",
+      "full_name": "Nguyen Thi Vy",
+      "role": "Dev",
+      "team": "Integration",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "yennguyen38@demo.aihub.vn",
+      "full_name": "Nguyen Thi Yen",
+      "role": "Dev",
+      "team": "MLOps",
+      "region": "Danang"
+    },
+    {
+      "email": "anhnguyen39@demo.aihub.vn",
+      "full_name": "Nguyen Thi Anh",
+      "role": "Dev",
+      "team": "Partnership",
+      "region": "Hue"
+    },
+    {
+      "email": "locnguyen40@demo.aihub.vn",
+      "full_name": "Nguyen Thi Loc",
+      "role": "Dev",
+      "team": "R&D",
+      "region": "CanTho"
+    },
+    {
+      "email": "annguyen41@demo.aihub.vn",
+      "full_name": "Nguyen Van An",
+      "role": "Dev",
+      "team": "Data Platform",
+      "region": "Hanoi"
+    },
+    {
+      "email": "binhnguyen42@demo.aihub.vn",
+      "full_name": "Nguyen Van Binh",
+      "role": "Dev",
+      "team": "AI Research",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "chaunguyen43@demo.aihub.vn",
+      "full_name": "Nguyen Van Chau",
+      "role": "Dev",
+      "team": "Automation",
+      "region": "Danang"
+    },
+    {
+      "email": "dungnguyen44@demo.aihub.vn",
+      "full_name": "Nguyen Van Dung",
+      "role": "Dev",
+      "team": "QA Guild",
+      "region": "Hue"
+    },
+    {
+      "email": "giangnguyen45@demo.aihub.vn",
+      "full_name": "Nguyen Van Giang",
+      "role": "Dev",
+      "team": "Security",
+      "region": "CanTho"
+    },
+    {
+      "email": "hanguyen46@demo.aihub.vn",
+      "full_name": "Nguyen Van Ha",
+      "role": "Dev",
+      "team": "Core Backend",
+      "region": "Hanoi"
+    },
+    {
+      "email": "hanhnguyen47@demo.aihub.vn",
+      "full_name": "Nguyen Van Hanh",
+      "role": "Dev",
+      "team": "Integration",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "hieunguyen48@demo.aihub.vn",
+      "full_name": "Nguyen Van Hieu",
+      "role": "Dev",
+      "team": "MLOps",
+      "region": "Danang"
+    },
+    {
+      "email": "hoanguyen49@demo.aihub.vn",
+      "full_name": "Nguyen Van Hoa",
+      "role": "Dev",
+      "team": "Partnership",
+      "region": "Hue"
+    },
+    {
+      "email": "hungnguyen50@demo.aihub.vn",
+      "full_name": "Nguyen Van Hung",
+      "role": "Dev",
+      "team": "R&D",
+      "region": "CanTho"
+    },
+    {
+      "email": "huynguyen51@demo.aihub.vn",
+      "full_name": "Nguyen Van Huy",
+      "role": "Dev",
+      "team": "Data Platform",
+      "region": "Hanoi"
+    },
+    {
+      "email": "khanhnguyen52@demo.aihub.vn",
+      "full_name": "Nguyen Van Khanh",
+      "role": "Dev",
+      "team": "AI Research",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "lamnguyen53@demo.aihub.vn",
+      "full_name": "Nguyen Van Lam",
+      "role": "Dev",
+      "team": "Automation",
+      "region": "Danang"
+    },
+    {
+      "email": "linhnguyen54@demo.aihub.vn",
+      "full_name": "Nguyen Van Linh",
+      "role": "Dev",
+      "team": "QA Guild",
+      "region": "Hue"
+    },
+    {
+      "email": "longnguyen55@demo.aihub.vn",
+      "full_name": "Nguyen Van Long",
+      "role": "Dev",
+      "team": "Security",
+      "region": "CanTho"
+    },
+    {
+      "email": "mynguyen56@demo.aihub.vn",
+      "full_name": "Nguyen Van My",
+      "role": "Dev",
+      "team": "Core Backend",
+      "region": "Hanoi"
+    },
+    {
+      "email": "namnguyen57@demo.aihub.vn",
+      "full_name": "Nguyen Van Nam",
+      "role": "Dev",
+      "team": "Integration",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "nghianguyen58@demo.aihub.vn",
+      "full_name": "Nguyen Van Nghia",
+      "role": "Dev",
+      "team": "MLOps",
+      "region": "Danang"
+    },
+    {
+      "email": "phongnguyen59@demo.aihub.vn",
+      "full_name": "Nguyen Van Phong",
+      "role": "Dev",
+      "team": "Partnership",
+      "region": "Hue"
+    },
+    {
+      "email": "phucnguyen60@demo.aihub.vn",
+      "full_name": "Nguyen Van Phuc",
+      "role": "Dev",
+      "team": "R&D",
+      "region": "CanTho"
+    },
+    {
+      "email": "quyennguyen61@demo.aihub.vn",
+      "full_name": "Nguyen Van Quyen",
+      "role": "Dev",
+      "team": "Data Platform",
+      "region": "Hanoi"
+    },
+    {
+      "email": "sangnguyen62@demo.aihub.vn",
+      "full_name": "Nguyen Van Sang",
+      "role": "Dev",
+      "team": "AI Research",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "sonnguyen63@demo.aihub.vn",
+      "full_name": "Nguyen Van Son",
+      "role": "Dev",
+      "team": "Automation",
+      "region": "Danang"
+    },
+    {
+      "email": "tamnguyen64@demo.aihub.vn",
+      "full_name": "Nguyen Van Tam",
+      "role": "Dev",
+      "team": "QA Guild",
+      "region": "Hue"
+    },
+    {
+      "email": "tannguyen65@demo.aihub.vn",
+      "full_name": "Nguyen Van Tan",
+      "role": "Dev",
+      "team": "Security",
+      "region": "CanTho"
+    },
+    {
+      "email": "thaonguyen66@demo.aihub.vn",
+      "full_name": "Nguyen Van Thao",
+      "role": "Dev",
+      "team": "Core Backend",
+      "region": "Hanoi"
+    },
+    {
+      "email": "thiennguyen67@demo.aihub.vn",
+      "full_name": "Nguyen Van Thien",
+      "role": "Dev",
+      "team": "Integration",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "thunguyen68@demo.aihub.vn",
+      "full_name": "Nguyen Van Thu",
+      "role": "Dev",
+      "team": "MLOps",
+      "region": "Danang"
+    },
+    {
+      "email": "thynguyen69@demo.aihub.vn",
+      "full_name": "Nguyen Van Thy",
+      "role": "Dev",
+      "team": "Partnership",
+      "region": "Hue"
+    },
+    {
+      "email": "toannguyen70@demo.aihub.vn",
+      "full_name": "Nguyen Van Toan",
+      "role": "Dev",
+      "team": "R&D",
+      "region": "CanTho"
+    },
+    {
+      "email": "trangnguyen71@demo.aihub.vn",
+      "full_name": "Nguyen Van Trang",
+      "role": "Dev",
+      "team": "Data Platform",
+      "region": "Hanoi"
+    },
+    {
+      "email": "trungnguyen72@demo.aihub.vn",
+      "full_name": "Nguyen Van Trung",
+      "role": "Dev",
+      "team": "AI Research",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "tuannguyen73@demo.aihub.vn",
+      "full_name": "Nguyen Van Tuan",
+      "role": "Dev",
+      "team": "Automation",
+      "region": "Danang"
+    },
+    {
+      "email": "tungnguyen74@demo.aihub.vn",
+      "full_name": "Nguyen Van Tung",
+      "role": "Dev",
+      "team": "QA Guild",
+      "region": "Hue"
+    },
+    {
+      "email": "uynguyen75@demo.aihub.vn",
+      "full_name": "Nguyen Van Uy",
+      "role": "Dev",
+      "team": "Security",
+      "region": "CanTho"
+    },
+    {
+      "email": "vannguyen76@demo.aihub.vn",
+      "full_name": "Nguyen Van Van",
+      "role": "Dev",
+      "team": "Core Backend",
+      "region": "Hanoi"
+    },
+    {
+      "email": "vynguyen77@demo.aihub.vn",
+      "full_name": "Nguyen Van Vy",
+      "role": "Dev",
+      "team": "Integration",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "yennguyen78@demo.aihub.vn",
+      "full_name": "Nguyen Van Yen",
+      "role": "Dev",
+      "team": "MLOps",
+      "region": "Danang"
+    },
+    {
+      "email": "anhnguyen79@demo.aihub.vn",
+      "full_name": "Nguyen Van Anh",
+      "role": "Dev",
+      "team": "Partnership",
+      "region": "Hue"
+    },
+    {
+      "email": "locnguyen80@demo.aihub.vn",
+      "full_name": "Nguyen Van Loc",
+      "role": "Dev",
+      "team": "R&D",
+      "region": "CanTho"
+    },
+    {
+      "email": "annguyen81@demo.aihub.vn",
+      "full_name": "Nguyen Minh An",
+      "role": "Dev",
+      "team": "Data Platform",
+      "region": "Hanoi"
+    },
+    {
+      "email": "binhnguyen82@demo.aihub.vn",
+      "full_name": "Nguyen Minh Binh",
+      "role": "Dev",
+      "team": "AI Research",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "chaunguyen83@demo.aihub.vn",
+      "full_name": "Nguyen Minh Chau",
+      "role": "Dev",
+      "team": "Automation",
+      "region": "Danang"
+    },
+    {
+      "email": "dungnguyen84@demo.aihub.vn",
+      "full_name": "Nguyen Minh Dung",
+      "role": "Dev",
+      "team": "QA Guild",
+      "region": "Hue"
+    },
+    {
+      "email": "giangnguyen85@demo.aihub.vn",
+      "full_name": "Nguyen Minh Giang",
+      "role": "Dev",
+      "team": "Security",
+      "region": "CanTho"
+    },
+    {
+      "email": "hanguyen86@demo.aihub.vn",
+      "full_name": "Nguyen Minh Ha",
+      "role": "Dev",
+      "team": "Core Backend",
+      "region": "Hanoi"
+    },
+    {
+      "email": "hanhnguyen87@demo.aihub.vn",
+      "full_name": "Nguyen Minh Hanh",
+      "role": "Dev",
+      "team": "Integration",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "hieunguyen88@demo.aihub.vn",
+      "full_name": "Nguyen Minh Hieu",
+      "role": "Dev",
+      "team": "MLOps",
+      "region": "Danang"
+    },
+    {
+      "email": "hoanguyen89@demo.aihub.vn",
+      "full_name": "Nguyen Minh Hoa",
+      "role": "Dev",
+      "team": "Partnership",
+      "region": "Hue"
+    },
+    {
+      "email": "hungnguyen90@demo.aihub.vn",
+      "full_name": "Nguyen Minh Hung",
+      "role": "Dev",
+      "team": "R&D",
+      "region": "CanTho"
+    },
+    {
+      "email": "huynguyen91@demo.aihub.vn",
+      "full_name": "Nguyen Minh Huy",
+      "role": "Dev",
+      "team": "Data Platform",
+      "region": "Hanoi"
+    },
+    {
+      "email": "khanhnguyen92@demo.aihub.vn",
+      "full_name": "Nguyen Minh Khanh",
+      "role": "Dev",
+      "team": "AI Research",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "lamnguyen93@demo.aihub.vn",
+      "full_name": "Nguyen Minh Lam",
+      "role": "Dev",
+      "team": "Automation",
+      "region": "Danang"
+    },
+    {
+      "email": "linhnguyen94@demo.aihub.vn",
+      "full_name": "Nguyen Minh Linh",
+      "role": "Dev",
+      "team": "QA Guild",
+      "region": "Hue"
+    },
+    {
+      "email": "longnguyen95@demo.aihub.vn",
+      "full_name": "Nguyen Minh Long",
+      "role": "Dev",
+      "team": "Security",
+      "region": "CanTho"
+    },
+    {
+      "email": "mynguyen96@demo.aihub.vn",
+      "full_name": "Nguyen Minh My",
+      "role": "Dev",
+      "team": "Core Backend",
+      "region": "Hanoi"
+    },
+    {
+      "email": "namnguyen97@demo.aihub.vn",
+      "full_name": "Nguyen Minh Nam",
+      "role": "Dev",
+      "team": "Integration",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "nghianguyen98@demo.aihub.vn",
+      "full_name": "Nguyen Minh Nghia",
+      "role": "Dev",
+      "team": "MLOps",
+      "region": "Danang"
+    },
+    {
+      "email": "phongnguyen99@demo.aihub.vn",
+      "full_name": "Nguyen Minh Phong",
+      "role": "Dev",
+      "team": "Partnership",
+      "region": "Hue"
+    },
+    {
+      "email": "phucnguyen100@demo.aihub.vn",
+      "full_name": "Nguyen Minh Phuc",
+      "role": "Dev",
+      "team": "R&D",
+      "region": "CanTho"
+    },
+    {
+      "email": "quyennguyen101@demo.aihub.vn",
+      "full_name": "Nguyen Minh Quyen",
+      "role": "Dev",
+      "team": "Data Platform",
+      "region": "Hanoi"
+    },
+    {
+      "email": "sangnguyen102@demo.aihub.vn",
+      "full_name": "Nguyen Minh Sang",
+      "role": "Dev",
+      "team": "AI Research",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "sonnguyen103@demo.aihub.vn",
+      "full_name": "Nguyen Minh Son",
+      "role": "Dev",
+      "team": "Automation",
+      "region": "Danang"
+    },
+    {
+      "email": "tamnguyen104@demo.aihub.vn",
+      "full_name": "Nguyen Minh Tam",
+      "role": "Dev",
+      "team": "QA Guild",
+      "region": "Hue"
+    },
+    {
+      "email": "tannguyen105@demo.aihub.vn",
+      "full_name": "Nguyen Minh Tan",
+      "role": "Dev",
+      "team": "Security",
+      "region": "CanTho"
+    },
+    {
+      "email": "thaonguyen106@demo.aihub.vn",
+      "full_name": "Nguyen Minh Thao",
+      "role": "Dev",
+      "team": "Core Backend",
+      "region": "Hanoi"
+    },
+    {
+      "email": "thiennguyen107@demo.aihub.vn",
+      "full_name": "Nguyen Minh Thien",
+      "role": "Dev",
+      "team": "Integration",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "thunguyen108@demo.aihub.vn",
+      "full_name": "Nguyen Minh Thu",
+      "role": "Dev",
+      "team": "MLOps",
+      "region": "Danang"
+    },
+    {
+      "email": "thynguyen109@demo.aihub.vn",
+      "full_name": "Nguyen Minh Thy",
+      "role": "Dev",
+      "team": "Partnership",
+      "region": "Hue"
+    },
+    {
+      "email": "toannguyen110@demo.aihub.vn",
+      "full_name": "Nguyen Minh Toan",
+      "role": "Dev",
+      "team": "R&D",
+      "region": "CanTho"
+    },
+    {
+      "email": "trangnguyen111@demo.aihub.vn",
+      "full_name": "Nguyen Minh Trang",
+      "role": "Dev",
+      "team": "Data Platform",
+      "region": "Hanoi"
+    },
+    {
+      "email": "trungnguyen112@demo.aihub.vn",
+      "full_name": "Nguyen Minh Trung",
+      "role": "Dev",
+      "team": "AI Research",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "tuannguyen113@demo.aihub.vn",
+      "full_name": "Nguyen Minh Tuan",
+      "role": "Dev",
+      "team": "Automation",
+      "region": "Danang"
+    },
+    {
+      "email": "tungnguyen114@demo.aihub.vn",
+      "full_name": "Nguyen Minh Tung",
+      "role": "Dev",
+      "team": "QA Guild",
+      "region": "Hue"
+    },
+    {
+      "email": "uynguyen115@demo.aihub.vn",
+      "full_name": "Nguyen Minh Uy",
+      "role": "Dev",
+      "team": "Security",
+      "region": "CanTho"
+    },
+    {
+      "email": "vannguyen116@demo.aihub.vn",
+      "full_name": "Nguyen Minh Van",
+      "role": "Dev",
+      "team": "Core Backend",
+      "region": "Hanoi"
+    },
+    {
+      "email": "vynguyen117@demo.aihub.vn",
+      "full_name": "Nguyen Minh Vy",
+      "role": "Dev",
+      "team": "Integration",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "yennguyen118@demo.aihub.vn",
+      "full_name": "Nguyen Minh Yen",
+      "role": "Dev",
+      "team": "MLOps",
+      "region": "Danang"
+    },
+    {
+      "email": "anhnguyen119@demo.aihub.vn",
+      "full_name": "Nguyen Minh Anh",
+      "role": "Dev",
+      "team": "Partnership",
+      "region": "Hue"
+    },
+    {
+      "email": "locnguyen120@demo.aihub.vn",
+      "full_name": "Nguyen Minh Loc",
+      "role": "Dev",
+      "team": "R&D",
+      "region": "CanTho"
+    },
+    {
+      "email": "annguyen121@demo.aihub.vn",
+      "full_name": "Nguyen Thanh An",
+      "role": "Dev",
+      "team": "Data Platform",
+      "region": "Hanoi"
+    },
+    {
+      "email": "binhnguyen122@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Binh",
+      "role": "Dev",
+      "team": "AI Research",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "chaunguyen123@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Chau",
+      "role": "Dev",
+      "team": "Automation",
+      "region": "Danang"
+    },
+    {
+      "email": "dungnguyen124@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Dung",
+      "role": "Dev",
+      "team": "QA Guild",
+      "region": "Hue"
+    },
+    {
+      "email": "giangnguyen125@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Giang",
+      "role": "Dev",
+      "team": "Security",
+      "region": "CanTho"
+    },
+    {
+      "email": "hanguyen126@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Ha",
+      "role": "Dev",
+      "team": "Core Backend",
+      "region": "Hanoi"
+    },
+    {
+      "email": "hanhnguyen127@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Hanh",
+      "role": "Dev",
+      "team": "Integration",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "hieunguyen128@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Hieu",
+      "role": "Dev",
+      "team": "MLOps",
+      "region": "Danang"
+    },
+    {
+      "email": "hoanguyen129@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Hoa",
+      "role": "Dev",
+      "team": "Partnership",
+      "region": "Hue"
+    },
+    {
+      "email": "hungnguyen130@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Hung",
+      "role": "Dev",
+      "team": "R&D",
+      "region": "CanTho"
+    },
+    {
+      "email": "huynguyen131@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Huy",
+      "role": "Dev",
+      "team": "Data Platform",
+      "region": "Hanoi"
+    },
+    {
+      "email": "khanhnguyen132@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Khanh",
+      "role": "Dev",
+      "team": "AI Research",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "lamnguyen133@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Lam",
+      "role": "Dev",
+      "team": "Automation",
+      "region": "Danang"
+    },
+    {
+      "email": "linhnguyen134@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Linh",
+      "role": "Dev",
+      "team": "QA Guild",
+      "region": "Hue"
+    },
+    {
+      "email": "longnguyen135@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Long",
+      "role": "Dev",
+      "team": "Security",
+      "region": "CanTho"
+    },
+    {
+      "email": "mynguyen136@demo.aihub.vn",
+      "full_name": "Nguyen Thanh My",
+      "role": "Dev",
+      "team": "Core Backend",
+      "region": "Hanoi"
+    },
+    {
+      "email": "namnguyen137@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Nam",
+      "role": "Dev",
+      "team": "Integration",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "nghianguyen138@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Nghia",
+      "role": "Dev",
+      "team": "MLOps",
+      "region": "Danang"
+    },
+    {
+      "email": "phongnguyen139@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Phong",
+      "role": "Dev",
+      "team": "Partnership",
+      "region": "Hue"
+    },
+    {
+      "email": "phucnguyen140@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Phuc",
+      "role": "Dev",
+      "team": "R&D",
+      "region": "CanTho"
+    },
+    {
+      "email": "quyennguyen141@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Quyen",
+      "role": "Dev",
+      "team": "Data Platform",
+      "region": "Hanoi"
+    },
+    {
+      "email": "sangnguyen142@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Sang",
+      "role": "Dev",
+      "team": "AI Research",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "sonnguyen143@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Son",
+      "role": "Dev",
+      "team": "Automation",
+      "region": "Danang"
+    },
+    {
+      "email": "tamnguyen144@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Tam",
+      "role": "Dev",
+      "team": "QA Guild",
+      "region": "Hue"
+    },
+    {
+      "email": "tannguyen145@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Tan",
+      "role": "Dev",
+      "team": "Security",
+      "region": "CanTho"
+    },
+    {
+      "email": "thaonguyen146@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Thao",
+      "role": "Dev",
+      "team": "Core Backend",
+      "region": "Hanoi"
+    },
+    {
+      "email": "thiennguyen147@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Thien",
+      "role": "Dev",
+      "team": "Integration",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "thunguyen148@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Thu",
+      "role": "Dev",
+      "team": "MLOps",
+      "region": "Danang"
+    },
+    {
+      "email": "thynguyen149@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Thy",
+      "role": "Dev",
+      "team": "Partnership",
+      "region": "Hue"
+    },
+    {
+      "email": "toannguyen150@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Toan",
+      "role": "Dev",
+      "team": "R&D",
+      "region": "CanTho"
+    },
+    {
+      "email": "trangnguyen151@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Trang",
+      "role": "Dev",
+      "team": "Data Platform",
+      "region": "Hanoi"
+    },
+    {
+      "email": "trungnguyen152@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Trung",
+      "role": "Dev",
+      "team": "AI Research",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "tuannguyen153@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Tuan",
+      "role": "Dev",
+      "team": "Automation",
+      "region": "Danang"
+    },
+    {
+      "email": "tungnguyen154@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Tung",
+      "role": "Dev",
+      "team": "QA Guild",
+      "region": "Hue"
+    },
+    {
+      "email": "uynguyen155@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Uy",
+      "role": "Dev",
+      "team": "Security",
+      "region": "CanTho"
+    },
+    {
+      "email": "vannguyen156@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Van",
+      "role": "Dev",
+      "team": "Core Backend",
+      "region": "Hanoi"
+    },
+    {
+      "email": "vynguyen157@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Vy",
+      "role": "Dev",
+      "team": "Integration",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "yennguyen158@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Yen",
+      "role": "Dev",
+      "team": "MLOps",
+      "region": "Danang"
+    },
+    {
+      "email": "anhnguyen159@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Anh",
+      "role": "Dev",
+      "team": "Partnership",
+      "region": "Hue"
+    },
+    {
+      "email": "locnguyen160@demo.aihub.vn",
+      "full_name": "Nguyen Thanh Loc",
+      "role": "Dev",
+      "team": "R&D",
+      "region": "CanTho"
+    },
+    {
+      "email": "annguyen161@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc An",
+      "role": "Dev",
+      "team": "Data Platform",
+      "region": "Hanoi"
+    },
+    {
+      "email": "binhnguyen162@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Binh",
+      "role": "Dev",
+      "team": "AI Research",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "chaunguyen163@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Chau",
+      "role": "Dev",
+      "team": "Automation",
+      "region": "Danang"
+    },
+    {
+      "email": "dungnguyen164@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Dung",
+      "role": "Dev",
+      "team": "QA Guild",
+      "region": "Hue"
+    },
+    {
+      "email": "giangnguyen165@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Giang",
+      "role": "Dev",
+      "team": "Security",
+      "region": "CanTho"
+    },
+    {
+      "email": "hanguyen166@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Ha",
+      "role": "Dev",
+      "team": "Core Backend",
+      "region": "Hanoi"
+    },
+    {
+      "email": "hanhnguyen167@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Hanh",
+      "role": "Dev",
+      "team": "Integration",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "hieunguyen168@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Hieu",
+      "role": "Dev",
+      "team": "MLOps",
+      "region": "Danang"
+    },
+    {
+      "email": "hoanguyen169@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Hoa",
+      "role": "Dev",
+      "team": "Partnership",
+      "region": "Hue"
+    },
+    {
+      "email": "hungnguyen170@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Hung",
+      "role": "Dev",
+      "team": "R&D",
+      "region": "CanTho"
+    },
+    {
+      "email": "huynguyen171@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Huy",
+      "role": "Dev",
+      "team": "Data Platform",
+      "region": "Hanoi"
+    },
+    {
+      "email": "khanhnguyen172@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Khanh",
+      "role": "Dev",
+      "team": "AI Research",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "lamnguyen173@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Lam",
+      "role": "Dev",
+      "team": "Automation",
+      "region": "Danang"
+    },
+    {
+      "email": "linhnguyen174@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Linh",
+      "role": "Dev",
+      "team": "QA Guild",
+      "region": "Hue"
+    },
+    {
+      "email": "longnguyen175@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Long",
+      "role": "Dev",
+      "team": "Security",
+      "region": "CanTho"
+    },
+    {
+      "email": "mynguyen176@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc My",
+      "role": "Dev",
+      "team": "Core Backend",
+      "region": "Hanoi"
+    },
+    {
+      "email": "namnguyen177@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Nam",
+      "role": "Dev",
+      "team": "Integration",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "nghianguyen178@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Nghia",
+      "role": "Dev",
+      "team": "MLOps",
+      "region": "Danang"
+    },
+    {
+      "email": "phongnguyen179@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Phong",
+      "role": "Dev",
+      "team": "Partnership",
+      "region": "Hue"
+    },
+    {
+      "email": "phucnguyen180@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Phuc",
+      "role": "Dev",
+      "team": "R&D",
+      "region": "CanTho"
+    },
+    {
+      "email": "quyennguyen181@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Quyen",
+      "role": "Dev",
+      "team": "Data Platform",
+      "region": "Hanoi"
+    },
+    {
+      "email": "sangnguyen182@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Sang",
+      "role": "Dev",
+      "team": "AI Research",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "sonnguyen183@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Son",
+      "role": "Dev",
+      "team": "Automation",
+      "region": "Danang"
+    },
+    {
+      "email": "tamnguyen184@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Tam",
+      "role": "Dev",
+      "team": "QA Guild",
+      "region": "Hue"
+    },
+    {
+      "email": "tannguyen185@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Tan",
+      "role": "Dev",
+      "team": "Security",
+      "region": "CanTho"
+    },
+    {
+      "email": "thaonguyen186@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Thao",
+      "role": "Dev",
+      "team": "Core Backend",
+      "region": "Hanoi"
+    },
+    {
+      "email": "thiennguyen187@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Thien",
+      "role": "Dev",
+      "team": "Integration",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "thunguyen188@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Thu",
+      "role": "Dev",
+      "team": "MLOps",
+      "region": "Danang"
+    },
+    {
+      "email": "thynguyen189@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Thy",
+      "role": "Dev",
+      "team": "Partnership",
+      "region": "Hue"
+    },
+    {
+      "email": "toannguyen190@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Toan",
+      "role": "Dev",
+      "team": "R&D",
+      "region": "CanTho"
+    },
+    {
+      "email": "trangnguyen191@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Trang",
+      "role": "Dev",
+      "team": "Data Platform",
+      "region": "Hanoi"
+    },
+    {
+      "email": "trungnguyen192@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Trung",
+      "role": "Dev",
+      "team": "AI Research",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "tuannguyen193@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Tuan",
+      "role": "Dev",
+      "team": "Automation",
+      "region": "Danang"
+    },
+    {
+      "email": "tungnguyen194@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Tung",
+      "role": "Dev",
+      "team": "QA Guild",
+      "region": "Hue"
+    },
+    {
+      "email": "uynguyen195@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Uy",
+      "role": "Dev",
+      "team": "Security",
+      "region": "CanTho"
+    },
+    {
+      "email": "vannguyen196@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Van",
+      "role": "Dev",
+      "team": "Core Backend",
+      "region": "Hanoi"
+    },
+    {
+      "email": "vynguyen197@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Vy",
+      "role": "Dev",
+      "team": "Integration",
+      "region": "HoChiMinh"
+    },
+    {
+      "email": "yennguyen198@demo.aihub.vn",
+      "full_name": "Nguyen Ngoc Yen",
+      "role": "Dev",
+      "team": "MLOps",
+      "region": "Danang"
+    }
+  ],
+  "metadata": {
+    "count": 200,
+    "source": "Synthetic but structured demo dataset generated for AIHubPlatform",
+    "roles": {
+      "Admin": 25,
+      "Dev": 175
+    }
+  }
+}

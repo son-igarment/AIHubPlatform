@@ -1,6 +1,5 @@
 import json
 import logging
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List
 
@@ -9,15 +8,15 @@ from .config import ROOT_DIR
 
 logger = logging.getLogger("modules")
 
-MODULES_FILE = ROOT_DIR / "modules.json"
+MODULES_FILE = ROOT_DIR / "config" / "modules.json"
 
 
 DEFAULT_MODULES: Dict[str, bool] = {
     "auth": True,
-    "dashboard": True,
-    "ai": True,
-    "embeddings": True,
-    "automation": True,
+    "generator": True,
+    "scheduler": True,
+    "crawl": True,
+    "analytics": True,
 }
 
 
@@ -27,14 +26,15 @@ def _load_raw() -> Dict[str, bool]:
     try:
         data = json.loads(MODULES_FILE.read_text(encoding="utf-8"))
         if isinstance(data, dict):
-            # Normalize keys to str and values to bool
-            return {str(k): bool(v) for k, v in data.items()}
+            # Normalize keys to lowercase str and values to bool
+            return {str(k).strip().lower(): bool(v) for k, v in data.items() if str(k).strip()}
     except Exception:  # pylint: disable=broad-except
         logger.exception("Failed to read modules.json; recreating with defaults")
     return {}
 
 
 def _save_raw(data: Dict[str, bool]) -> None:
+    MODULES_FILE.parent.mkdir(parents=True, exist_ok=True)
     MODULES_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
 
 
@@ -55,7 +55,7 @@ def list_modules() -> Dict[str, bool]:
 
 
 def set_module(name: str, enabled: bool) -> bool:
-    name = name.strip()
+    name = name.strip().lower()
     if not name:
         raise ValueError("Module name required")
     data = list_modules()
@@ -69,6 +69,7 @@ def set_module(name: str, enabled: bool) -> bool:
 
 
 def toggle_module(name: str) -> bool:
+    name = name.strip().lower()
     data = list_modules()
     if name not in data:
         # Add new module on first toggle, default to True after toggle

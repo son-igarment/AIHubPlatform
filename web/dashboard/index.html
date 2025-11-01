@@ -54,6 +54,7 @@
     <script defer src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script defer src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
   </head>
   <body>
     <div id="root"></div>
@@ -70,6 +71,9 @@
           requests_per_minute: [],
           latency_per_minute: [],
           similarity_heatmap: [],
+          top_similarity_queries: [],
+          user_summary: { total: 0, admin: 0, dev: 0 },
+          demo_password_hint: '',
           updated_at: ''
         });
 
@@ -80,12 +84,23 @@
             requests_per_minute: [],
             latency_per_minute: [],
             similarity_heatmap: [],
+            top_similarity_queries: [],
+            user_summary: { total: 0, admin: 0, dev: 0 },
+            demo_password_hint: '',
             updated_at: '',
             ...overrides,
             modules_summary: {
               ...INSIGHT_BASE.modules_summary,
               ...(overrides.modules_summary || {})
-            }
+            },
+            user_summary: {
+              ...INSIGHT_BASE.user_summary,
+              ...(overrides.user_summary || {})
+            },
+            top_similarity_queries: Array.isArray(overrides.top_similarity_queries)
+              ? [...overrides.top_similarity_queries]
+              : [...INSIGHT_BASE.top_similarity_queries],
+            demo_password_hint: overrides.demo_password_hint ?? INSIGHT_BASE.demo_password_hint,
           };
         }
 
@@ -108,6 +123,15 @@
             similarity_heatmap: next.similarity_heatmap
               ? [...next.similarity_heatmap]
               : prev.similarity_heatmap,
+            user_summary: next.user_summary
+              ? { ...INSIGHT_BASE.user_summary, ...next.user_summary }
+              : prev.user_summary,
+            top_similarity_queries: Array.isArray(next.top_similarity_queries)
+              ? [...next.top_similarity_queries]
+              : prev.top_similarity_queries,
+            demo_password_hint: typeof next.demo_password_hint === 'string'
+              ? next.demo_password_hint
+              : prev.demo_password_hint,
             updated_at: next.updated_at || prev.updated_at,
           };
         }
@@ -181,6 +205,56 @@
           return e('div', { className:'chart-wrap', style:{height: `${height}px`} }, e('canvas', { ref: canvasRef }));
         }
 
+        function BarChart({ points, label='Metric', color, height=280 }) {
+          const chartRef = React.useRef(null);
+          const canvasRef = React.useRef(null);
+          const barColor = color || (getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#6ea8fe');
+
+          React.useEffect(() => {
+            if (!canvasRef.current) return;
+            const ctx = canvasRef.current.getContext('2d');
+            const chart = new Chart(ctx, {
+              type: 'bar',
+              data: {
+                labels: [],
+                datasets: [{
+                  label,
+                  data: [],
+                  backgroundColor: barColor + 'aa',
+                  borderColor: barColor,
+                  borderWidth: 1,
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 180 },
+                scales: {
+                  x: { grid: { display: false } },
+                  y: { grid: { color: 'rgba(150,160,200,.15)' }, ticks: { precision: 0 } }
+                },
+                plugins: { legend: { display: false }, tooltip: { mode:'index', intersect:false } }
+              }
+            });
+            chartRef.current = chart;
+            return () => { try { chart.destroy(); } catch {} };
+          }, []);
+
+          React.useEffect(() => {
+            const chart = chartRef.current; if (!chart) return;
+            const labels = (points||[]).map(p => {
+              const dt = new Date(p.ts);
+              if (Number.isNaN(dt.getTime())) return String(p.ts || '');
+              return dt.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+            });
+            chart.data.labels = labels;
+            chart.data.datasets[0].data = (points||[]).map(p => Number(p.value || 0));
+            chart.update('none');
+          }, [points, label, barColor]);
+
+          return e('div', { className:'chart-wrap', style:{height: `${height}px`} }, e('canvas', { ref: canvasRef }));
+        }
+
         function SimilarityHeatmap({ series }) {
           const data = Array.isArray(series) ? series : [];
           const columns = data.length;
@@ -230,6 +304,163 @@
               e('div', { className: 'heatmap-legend-bar' }),
               e('span', null, 'Cao')
             )
+          );
+        }
+
+        function TopQueriesChart({ queries }) {
+          const chartRef = React.useRef(null);
+          const canvasRef = React.useRef(null);
+          const datasetColor = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#6ea8fe';
+
+          React.useEffect(() => {
+            if (chartRef.current || !canvasRef.current) return;
+            const ctx = canvasRef.current.getContext('2d');
+            const chart = new Chart(ctx, {
+              type: 'bar',
+              data: {
+                labels: [],
+                datasets: [{
+                  label: 'Độ tương đồng',
+                  data: [],
+                  backgroundColor: datasetColor + '44',
+                  borderColor: datasetColor,
+                  borderWidth: 1,
+                }]
+              },
+              options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 200 },
+                scales: {
+                  x: { min: 0, max: 1, ticks: { callback: v => Number(v).toFixed(2) } },
+                  y: { ticks: { autoSkip: false } }
+                },
+                plugins: { legend: { display: false }, tooltip: { intersect: false, mode: 'index' } }
+              }
+            });
+            chartRef.current = chart;
+            return () => { try { chart.destroy(); } catch {} };
+          }, [queries]);
+
+          React.useEffect(() => {
+            const chart = chartRef.current;
+            if (!chart) return;
+            const rows = Array.isArray(queries) ? queries.slice(0, 8) : [];
+            const labels = rows.map(item => {
+              const q = String(item.query || '').trim() || '(n/a)';
+              return q.length > 32 ? q.slice(0, 29) + '…' : q;
+            });
+            const scores = rows.map(item => Number(item.score || 0));
+            chart.data.labels = labels;
+            chart.data.datasets[0].data = scores;
+            chart.update('none');
+          }, [queries]);
+
+          const hasData = Array.isArray(queries) && queries.length > 0;
+          return e('div', { className:'chart-wrap', style:{ minHeight:'240px', position:'relative' } },
+            e('canvas', { ref: canvasRef }),
+            !hasData ? e('div', {
+              style:{ position:'absolute', inset:'0', display:'flex', alignItems:'center', justifyContent:'center', opacity:0.7 }
+            }, 'Chưa có truy vấn tương đồng') : null
+          );
+        }
+
+        function D3Heatmap({ series }) {
+          const ref = React.useRef(null);
+
+          React.useEffect(() => {
+            const node = ref.current;
+            if (!node) return;
+            node.innerHTML = '';
+            const data = Array.isArray(series) ? series : [];
+            if (!data.length || typeof window.d3 === 'undefined') {
+              const placeholder = document.createElement('div');
+              placeholder.style.opacity = 0.7;
+              placeholder.style.display = 'flex';
+              placeholder.style.alignItems = 'center';
+              placeholder.style.justifyContent = 'center';
+              placeholder.style.height = '240px';
+              placeholder.textContent = 'Chưa có dữ liệu heatmap';
+              node.appendChild(placeholder);
+              return;
+            }
+            const d3 = window.d3;
+            const cssVars = getComputedStyle(document.documentElement);
+            const axisColor = cssVars.getPropertyValue('--text').trim() || '#e6ecff';
+            const width = node.clientWidth || 420;
+            const height = 260;
+            const margin = { top: 24, right: 16, bottom: 32, left: 48 };
+            const svg = d3.select(node)
+              .append('svg')
+              .attr('width', width)
+              .attr('height', height)
+              .attr('viewBox', `0 0 ${width} ${height}`)
+              .attr('preserveAspectRatio', 'xMidYMid meet');
+
+            const columns = data.map(col => col.label || (col.minute ? col.minute.slice(11, 16) : '')); 
+            const binCount = data[0]?.bins?.length || 0;
+            if (!binCount) {
+              svg.append('text').attr('x', width / 2).attr('y', height / 2)
+                .attr('text-anchor', 'middle').attr('fill', '#888').text('Không có dữ liệu');
+              return;
+            }
+            const yLabels = Array.from({ length: binCount }, (_, i) => (1 - i / binCount).toFixed(2));
+            const xScale = d3.scaleBand().domain(columns).range([margin.left, width - margin.right]).padding(0.05);
+            const yScale = d3.scaleBand().domain(yLabels).range([margin.top, height - margin.bottom]);
+
+            const cells = [];
+            let maxVal = 0;
+            data.forEach((col, colIdx) => {
+              const bins = Array.isArray(col.bins) ? col.bins : [];
+              for (let i = 0; i < binCount; i++) {
+                const value = Number(bins[i] || 0);
+                maxVal = Math.max(maxVal, value);
+                const level = yLabels[i] || '';
+                cells.push({ x: columns[colIdx], y: level, value });
+              }
+            });
+
+            const color = d3.scaleLinear()
+              .domain([0, maxVal || 1])
+              .range(['rgba(110,168,254,0.12)', 'rgba(110,168,254,0.9)']);
+
+            svg.append('g').selectAll('rect')
+              .data(cells)
+              .enter()
+              .append('rect')
+              .attr('x', d => xScale(d.x))
+              .attr('y', d => yScale(d.y))
+              .attr('width', xScale.bandwidth())
+              .attr('height', yScale.bandwidth())
+              .attr('rx', 3)
+              .attr('ry', 3)
+              .attr('fill', d => color(d.value))
+              .append('title')
+              .text(d => `${d.x} • ${d.y}: ${d.value}`);
+
+            const xAxis = svg.append('g')
+              .attr('transform', `translate(0,${height - margin.bottom})`)
+              .call(d3.axisBottom(xScale).tickSize(0));
+            xAxis.selectAll('text')
+              .attr('transform', 'translate(-10,12) rotate(-30)')
+              .style('fill', axisColor)
+              .style('font-size', '10px')
+              .style('text-anchor', 'end');
+            xAxis.selectAll('path, line').attr('stroke', 'transparent');
+
+            const yAxis = svg.append('g')
+              .attr('transform', `translate(${margin.left},0)`)
+              .call(d3.axisLeft(yScale).tickSize(0));
+            yAxis.selectAll('text')
+              .style('fill', axisColor)
+              .style('font-size', '10px');
+            yAxis.selectAll('path, line').attr('stroke', 'transparent');
+
+          }, [series]);
+
+          return e('div', { className:'chart-wrap heatmap-card', style:{ minHeight:'260px' } },
+            e('div', { ref, style:{ width:'100%', height:'100%' } })
           );
         }
 
@@ -324,6 +555,9 @@
           const { tasks, reports, points, ai, aiLat, insight, connected } = useDashboardData();
           const requestPoints = (insight.requests_per_minute || []).map(p => ({ ts: p.minute, value: Number(p.count || 0) }));
           const latencyPoints = (insight.latency_per_minute || []).map(p => ({ ts: p.minute, value: Number(p.avg_latency_ms || 0) }));
+          const userSummary = insight.user_summary || INSIGHT_BASE.user_summary;
+          const passwordHint = insight.demo_password_hint || 'Demo@123';
+          const demoFooter = `Demo data · Users: ${userSummary.total} (Admin ${userSummary.admin} / Dev ${userSummary.dev}) · Default password: ${passwordHint}`;
           return e('div', { className:'container' },
             e('div', { className:'header' },
               e('div', { className:'brand' }, 'AIHub Mini Dashboard'),
@@ -353,7 +587,7 @@
                 ),
                 e('div', { className:'insight-item' },
                   e('div', { className:'insight-label' }, 'Độ trễ trung bình (ms)'),
-                  e(LineChart, { points: latencyPoints, label:'Avg latency (ms)', color:'var(--warn)', height:220 })
+                  e(BarChart, { points: latencyPoints, label:'Avg latency (ms)', color:'var(--warn)', height:220 })
                 ),
                 e('div', { className:'insight-item' },
                   e('div', { className:'insight-label' }, 'Heatmap tương đồng'),
@@ -365,16 +599,82 @@
               e(KpiCard, { title:'Độ tương đồng TB', value: (ai.avg_similarity||0).toFixed(3), badges:[{label:'Samples', value: ai.similarity_count, color:'var(--accent)'}] }),
               e(KpiCard, { title:'Latency', value: ai.avg_latency_ms + 'ms', badges:[{label:'P50', value: ai.p50_latency_ms + 'ms', color:'var(--ok)'},{label:'P95', value: ai.p95_latency_ms + 'ms', color:'var(--warn)'}] }),
               e(KpiCard, { title:'Cập nhật', value: (ai.updated_at||'').replace('T',' ').slice(0,19) || '-', badges:[] }),
-              e(KpiCard, { title:'Users', value: 'Demo', badges:[{label:'Admin', value:'1', color:'var(--accent)'},{label:'Dev', value:'1', color:'var(--accent)'}] })
+              e(KpiCard, {
+                title:'Users',
+                value: userSummary.total || 0,
+                badges:[
+                  {label:'Admin', value:String(userSummary.admin || 0), color:'var(--accent)'},
+                  {label:'Dev', value:String(userSummary.dev || 0), color:'var(--accent)'}
+                ]
+              })
             ),
             e('div', { className:'row' },
               e(LineChart, { points: aiLat, label:'AI Latency (ms)', color:'var(--ok)' })
             ),
-            e('div', { className:'footer' }, 'Tip: Mở trên mobile để kiểm tra responsive. Insight load <2.5s, realtime qua WebSocket, tương thích mobile.')
+            e('div', { className:'footer' }, demoFooter)
           );
         }
 
-        ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+        function InsightApp() {
+          const { tasks, reports, points, ai, aiLat, insight, connected } = useDashboardData();
+          const requestPoints = (insight.requests_per_minute || []).map(p => ({ ts: p.minute, value: Number(p.count || 0) }));
+          const latencyPoints = (insight.latency_per_minute || []).map(p => ({ ts: p.minute, value: Number(p.avg_latency_ms || 0) }));
+          const heatmapSeries = insight.similarity_heatmap || [];
+          const topQueries = insight.top_similarity_queries || [];
+          const userSummary = insight.user_summary || INSIGHT_BASE.user_summary;
+          const passwordHint = insight.demo_password_hint || 'Demo@123';
+          const footerText = `Realtime insight · Users: ${userSummary.total} (Admin ${userSummary.admin} / Dev ${userSummary.dev}) · Password: ${passwordHint}`;
+          return e('div', { className:'container' },
+            e('div', { className:'header' },
+              e('div', { className:'brand' }, 'AIHub Insight Dashboard'),
+              e('div', { className:'badge', title: connected ? 'WebSocket Connected' : 'Disconnected', style:{ borderColor: connected? 'var(--ok)': 'var(--warn)', color:connected? 'var(--ok)': 'var(--warn)'} }, connected ? 'Realtime: ON' : 'Realtime: OFF')
+            ),
+            e('div', { className:'section' },
+              e(ModuleStatusCard, { summary: insight.modules_summary, modules: insight.modules, updatedAt: insight.updated_at })
+            ),
+            e('div', { className:'section' },
+              e('div', { className:'section-title' },
+                e('span', null, 'AI Activity'),
+                e('small', null, 'Requests · Latency · Similarity · Queries')
+              ),
+              e('div', { className:'insight-grid' },
+                e('div', { className:'insight-item' },
+                  e('div', { className:'insight-label' }, 'AI Requests mỗi phút'),
+                  e(LineChart, { points: requestPoints, label:'AI Requests/min', color:'var(--accent)', height:260 })
+                ),
+                e('div', { className:'insight-item' },
+                  e('div', { className:'insight-label' }, 'Độ trễ trung bình mỗi phút (ms)'),
+                  e(BarChart, { points: latencyPoints, label:'Avg latency (ms)', color:'var(--warn)', height:260 })
+                ),
+                e('div', { className:'insight-item' },
+                  e('div', { className:'insight-label' }, 'Heatmap cosine similarity (D3)'),
+                  e(D3Heatmap, { series: heatmapSeries })
+                ),
+                e('div', { className:'insight-item' },
+                  e('div', { className:'insight-label' }, 'Top truy vấn similarity'),
+                  e(TopQueriesChart, { queries: topQueries })
+                )
+              )
+            ),
+            e('div', { className:'cards' },
+              e(KpiCard, { title:'AI Generations', value: ai.total_generations, badges:[{label:'P50', value: ai.p50_latency_ms + 'ms', color:'var(--ok)'},{label:'P95', value: ai.p95_latency_ms + 'ms', color:'var(--warn)'},{label:'Avg', value: ai.avg_latency_ms + 'ms', color:'var(--accent)'}] }),
+              e(KpiCard, { title:'Similarity', value: (ai.avg_similarity||0).toFixed(3), badges:[{label:'Samples', value: ai.similarity_count, color:'var(--accent)'}] }),
+              e(KpiCard, { title:'Tasks Done', value: tasks.completed + '/' + tasks.total, badges:[{label:'Pending', value: tasks.pending, color:'var(--warn)'}] }),
+              e(KpiCard, { title:'Reports Today', value: reports.delivered_today, badges:[{label:'Pending review', value: reports.pending_review, color:'var(--warn)'}] })
+            ),
+            e('div', { className:'footer' }, footerText)
+          );
+        }
+
+        function RootApp() {
+          const path = window.location.pathname.toLowerCase();
+          if (path.includes('/dashboard/insight')) {
+            return e(InsightApp);
+          }
+          return e(App);
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(RootApp));
       });
     </script>
   </body>

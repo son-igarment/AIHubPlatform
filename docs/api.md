@@ -53,7 +53,7 @@ Realtime  ──> WebSocket /ws/metrics (snapshot + metric stream)
   ```json
   {
     "email": "admin@example.com",
-    "password": "Admin@123"
+    "password": "Demo@123"
   }
   ```
 - Response `200`:
@@ -127,6 +127,53 @@ Response mẫu:
   }
   ```
 
+#### `GET /api/v1/dashboard/insight`
+- Trả về snapshot tổng hợp cho trang `/dashboard/insight` gồm trạng thái module, requests/min, latency/min, heatmap cosine similarity, top truy vấn similarity và thông tin người dùng demo.
+- Response rút gọn:
+  ```json
+  {
+    "modules": [{"name": "auth", "enabled": true}],
+    "modules_summary": {"total": 5, "enabled": 5, "disabled": 0},
+    "requests_per_minute": [{"minute": "2025-10-18T03:21:00+00:00", "count": 17}],
+    "latency_per_minute": [{"minute": "2025-10-18T03:21:00+00:00", "avg_latency_ms": 120.4}],
+    "similarity_heatmap": [{"minute": "2025-10-18T03:21:00+00:00", "label": "03:21", "bins": [3,2,0,...]}],
+    "top_similarity_queries": [{"query": "embedding latency", "score": 0.92, "doc_id": "kw:fastapi"}],
+    "user_summary": {"total": 200, "admin": 25, "dev": 175},
+    "demo_password_hint": "*****@123",
+    "updated_at": "2025-10-18T03:21:54.712345+00:00"
+  }
+  ```
+
+### Modular core v3
+
+#### `POST /api/module/toggle`
+- **Auth**: bắt buộc `Authorization: Bearer <access_token>` (role Dev/Admin đều hợp lệ).
+- Body mẫu:
+  ```json
+  {
+    "module": "scheduler",
+    "enabled": false
+  }
+  ```
+- Response:
+  ```json
+  {
+    "ok": true,
+    "module": "scheduler",
+    "enabled": false,
+    "ts": 1730000000,
+    "modules": {
+      "auth": true,
+      "generator": true,
+      "scheduler": false,
+      "crawl": true,
+      "analytics": true
+    }
+  }
+  ```
+- Mỗi lần toggle sẽ ghi log vào `logs/automation_logs.log` và gửi thông báo Telegram (nếu cấu hình) gồm module + user kích hoạt.
+- Lịch sử được lưu trong bảng `modules_toggles` (`module`, `enabled`, `actor`, `ts`) thuộc database `DATABASE_URL`.
+
 ### WebSocket realtime
 
 #### `GET /ws/metrics`
@@ -138,7 +185,15 @@ Response mẫu:
        "type": "snapshot",
        "points": [{"ts": "...", "value": 50}, ...],
        "tasks": {...},
-       "reports": {...}
+       "reports": {...},
+       "ai": {...},
+       "insight": {
+         "modules_summary": {...},
+         "requests_per_minute": [...],
+         "latency_per_minute": [...],
+         "similarity_heatmap": [...],
+         "top_similarity_queries": [...]
+       }
      }
      ```
   2. Mỗi ~1 giây server gửi gói `metric`:
@@ -161,10 +216,18 @@ Response mẫu:
 - **Postman**: `postman/AIHubPlatform_Auth.postman_collection.json` giúp kiểm thử nhanh luồng Auth/Role.
 - **PowerShell CLI**: `scripts/auth.ps1` hướng tới Auth service triển khai trên Render (`AIHUB_API_BASE_URL`), không trùng với backend FastAPI demo. Sử dụng khi cần test tích hợp với nền tảng gốc.
 
+## ClickUp Webhook
+- `POST /api/task/webhook` – bắt buộc header HMAC (`X-ClickUp-Signature` hoặc `X-Signature`) với khóa `CLICKUP_WEBHOOK_SECRET`. Payload giống webhook ClickUp; khi `status='done'` hệ thống:
+  - Ghi log `flow_event` vào `logs/automation_logs.log` và DB `modules_toggles`.
+  - Tự động tìm `next_task_id` (qua payload hoặc `NEXT_TASK_LOOKUP_URL` nếu cấu hình) và gọi `NEXT_TASK_URL` để kích hoạt nhiệm vụ kế tiếp.
+  - Gắn nhãn `AIHubAuto`, append Google Sheet và gửi Telegram thông báo `Tên task → next_task_id`.
+- `POST /api/task/` và `POST /api/v1/task/` vẫn khả dụng cho backward compatibility với shared token `TASK_WEBHOOK_TOKEN`.
+
 ## Automation Scheduler
 - `app/automation.py` chạy nền sử dụng APScheduler. Job mặc định chạy ngay khi khởi động và lặp lại mỗi `AUTOMATION_INTERVAL_HOURS` (6 giờ).
-- Hai bước chính trong job:
-  1. **Crawl**: gọi `AI_CRAWL_ENDPOINT` (method mặc định `GET`). Có thể khai báo payload JSON qua `AI_CRAWL_PAYLOAD`.
-  2. **Update**: gửi dữ liệu vừa crawl tới `AI_UPDATE_ENDPOINT` (method mặc định `POST`). Payload mặc định chứa trường `data` là kết quả crawl; có thể bổ sung qua `AI_UPDATE_PAYLOAD`.
-- Header bổ sung cho cả hai bước có thể cấu hình bằng `AI_API_KEY` (Bearer) hoặc JSON `AI_EXTRA_HEADERS`.
-- Tổng kết job được log vào `logs/app.log` và nếu cấu hình `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` thì sẽ đẩy thông báo Telegram.
+- Pipeline v3 gồm 3 bước liên tiếp (mỗi bước có thông báo Telegram + log JSON):
+  1. **crawl_keywords**: gọi `AI_CRAWL_ENDPOINT` (mặc định `GET`) hoặc trả về dữ liệu mô phỏng nếu endpoint chưa cấu hình.
+  2. **update_embeddings**: upsert nội dung vào `aihub_knowledge.db` (hoặc endpoint ngoài), lưu vector và thống kê `processed/inserted/updated/rows_changed`.
+  3. **report_to_tg**: tổng hợp kết quả, gửi thông báo Telegram và ghi JSON-line vào `logs/auto_6h.jsonl`.
+- Header bổ sung cho các bước có thể cấu hình bằng `AI_API_KEY` (Bearer) hoặc JSON `AI_EXTRA_HEADERS`.
+- Toàn bộ kết quả được log vào `logs/app.log`, `logs/automation_logs.log` và `logs/auto_6h.jsonl`; nếu cấu hình `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` thì mỗi job và tổng kết cuối đều được gửi Telegram.

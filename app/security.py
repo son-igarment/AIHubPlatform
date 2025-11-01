@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional, Callable
 import uuid
+import logging
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -9,15 +10,18 @@ from passlib.context import CryptContext
 
 from .config import settings
 from .models import UserInDB, UserPublic, Role
+from .demo_data import load_demo_users
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+logger = logging.getLogger("auth.seed")
 
 
 # In-memory user storage for demo purposes
 _users_by_email: Dict[str, UserInDB] = {}
 _refresh_store: Dict[str, str] = {}  # refresh_token -> user_id
+_demo_password_hint: str = "Demo@123"
 
 
 def _now() -> datetime:
@@ -90,22 +94,35 @@ def require_role(required: Role) -> Callable[[UserInDB], UserInDB]:
 def seed_demo_users():
     if _users_by_email:
         return
-    admin = UserInDB(
-        id=str(uuid.uuid4()),
-        email="admin@example.com",
-        full_name="Admin User",
-        role="Admin",
-        hashed_password=hash_password("Admin@123"),
-    )
-    dev = UserInDB(
-        id=str(uuid.uuid4()),
-        email="dev@example.com",
-        full_name="Dev User",
-        role="Dev",
-        hashed_password=hash_password("Dev@123"),
-    )
-    _users_by_email[admin.email] = admin
-    _users_by_email[dev.email] = dev
+    global _demo_password_hint
+    records, default_password = load_demo_users()
+    hashed_cache: Dict[str, str] = {}
+    created = 0
+    for record in records:
+        email = record.email.lower()
+        if email in _users_by_email:
+            continue
+        pwd = record.password or default_password
+        hashed = hashed_cache.get(pwd)
+        if not hashed:
+            hashed = hash_password(pwd)
+            hashed_cache[pwd] = hashed
+        user = UserInDB(
+            id=str(uuid.uuid4()),
+            email=email,
+            full_name=record.full_name,
+            role=record.role,
+            hashed_password=hashed,
+        )
+        _users_by_email[user.email] = user
+        created += 1
+    _demo_password_hint = default_password
+    if default_password:
+        mask_len = max(0, len(default_password) - 4)
+        masked_hint = "*" * mask_len + default_password[-4:]
+    else:
+        masked_hint = ""
+    logger.info("Seeded %s demo users (password hint: %s)", created, masked_hint)
 
 
 def authenticate(email: str, password: str) -> Optional[UserInDB]:
@@ -134,4 +151,19 @@ def validate_refresh_token(refresh_token: str) -> str:
     if payload.get("type") != "refresh":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid refresh token")
     return _refresh_store[refresh_token]
+
+
+def get_user_statistics() -> Dict[str, int]:
+    admin = 0
+    dev = 0
+    for user in _users_by_email.values():
+        if user.role == "Admin":
+            admin += 1
+        else:
+            dev += 1
+    return {"total": admin + dev, "admin": admin, "dev": dev}
+
+
+def get_demo_password_hint() -> str:
+    return _demo_password_hint
 
